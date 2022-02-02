@@ -1,13 +1,10 @@
 package posix
 
 import (
-	_ "golang.org/x/sys/unix"
 	"strings"
 	"syscall"
 	"unsafe"
 )
-
-const ()
 
 func shmOpen(name string, oflag int, mode uint32) (fd int, err error) {
 	fd = -1
