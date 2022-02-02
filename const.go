@@ -1,0 +1,97 @@
+package posix
+
+import (
+	"syscall"
+	"unsafe"
+)
+
+//goland:noinspection GoSnakeCaseUsage
+const (
+	EINVAL     = syscall.EINVAL
+	EAGAIN     = syscall.EAGAIN
+	ENOENT     = syscall.ENOENT
+	O_RDWR     = syscall.O_RDWR     // open for reading and writing
+	O_CREAT    = syscall.O_CREAT    // create if nonexistent
+	O_EXCL     = syscall.O_EXCL     // error if already exists
+	O_NOFOLLOW = syscall.O_NOFOLLOW // don't follow symlinks
+	O_RDONLY   = syscall.O_RDONLY   // open for reading only
+	O_WRONLY   = syscall.O_WRONLY   // open for writing only
+	O_ACCMODE  = syscall.O_ACCMODE  // mask for modes O_RDONLY & O_WRONLY
+	O_CLOEXEC  = syscall.O_CLOEXEC
+)
+
+type accFlags int
+
+//goland:noinspection GoSnakeCaseUsage
+const (
+	PROT_NONE  accFlags = syscall.PROT_NONE  // The memory cannot be accessed at all.
+	PROT_READ  accFlags = syscall.PROT_READ  // The memory can be read.
+	PROT_WRITE accFlags = syscall.PROT_WRITE // The memory can be modified.
+	PROT_EXEC  accFlags = syscall.PROT_EXEC  // The memory can be executed.
+)
+
+/*
+The Mode Bits for Access Permission
+The file mode, stored in the st_mode field of the file attributes, contains two kinds of information: the file type code, and the access permission bits. This section discusses only the access permission bits, which control who can read or write the file. See Testing File Type, for information about the file type code.
+All the symbols listed in this section are defined in the header file sys/stat.h.
+These symbolic constants are defined for the file mode bits that control access permission for the file:
+*/
+//goland:noinspection GoSnakeCaseUsage
+const (
+	S_IRUSR  = syscall.S_IRUSR  // Read permission bit for the owner of the file. On many systems this bit is 0400.
+	S_IREAD  = syscall.S_IREAD  // Deprecated: S_IREAD is an Obsolete synonym provided for BSD compatibility
+	S_IWUSR  = syscall.S_IWUSR  // Write permission bit for the owner of the file. Usually 0200.
+	S_IWRITE = syscall.S_IWRITE // Deprecated: S_IWRITE is an obsolete synonym provided for BSD compatibility.
+	S_IXUSR  = syscall.S_IXUSR  // Execute (for ordinary files) or search (for directories) permission bit for the owner of the file. Usually 0100.
+	S_IEXEC  = syscall.S_IEXEC  // Deprecated: S_IEXEC is an obsolete synonym provided for BSD compatibility.
+	S_IRWXU  = syscall.S_IRWXU  // This is equivalent to ‘(S_IRUSR | S_IWUSR | S_IXUSR)’.
+	S_IRGRP  = syscall.S_IRGRP  // Read permission bit for the group owner of the file. Usually 040.
+	S_IWGRP  = syscall.S_IWGRP  // Write permission bit for the group owner of the file. Usually 020.
+	S_IXGRP  = syscall.S_IXGRP  // Execute or search permission bit for the group owner of the file. Usually 010.
+	S_IRWXG  = syscall.S_IRWXG  // This is equivalent to ‘(S_IRGRP | S_IWGRP | S_IXGRP)’.
+	S_IROTH  = syscall.S_IROTH  // Read permission bit for other users. Usually 04.
+	S_IWOTH  = syscall.S_IWOTH  // Write permission bit for other users. Usually 02.
+	S_IXOTH  = syscall.S_IXOTH  // Execute or search permission bit for other users. Usually 01.
+	S_IRWXO  = syscall.S_IRWXO  // This is equivalent to ‘(S_IROTH | S_IWOTH | S_IXOTH)’.
+	S_ISUID  = syscall.S_ISUID  // This is the set-user-ID on execute bit, usually 04000. See How Change Persona.
+	S_ISGID  = syscall.S_ISGID  // This is the set-group-ID on execute bit, usually 02000. See How Change Persona.
+	S_ISVTX  = syscall.S_ISVTX  // This is the sticky bit, usually 01000.
+
+)
+
+// File Fcntl
+//goland:noinspection GoSnakeCaseUsage
+const (
+	F_GETFD    = syscall.F_GETFD
+	F_SETFD    = syscall.F_SETFD
+	FD_CLOEXEC = syscall.FD_CLOEXEC
+)
+
+var (
+	errEAGAIN error = syscall.EAGAIN
+	errEINVAL error = syscall.EINVAL
+	errENOENT error = syscall.ENOENT
+)
+
+func errnoErr(e syscall.Errno) error {
+	switch e {
+	case 0:
+		return nil
+	case EAGAIN:
+		return errEAGAIN
+	case EINVAL:
+		return errEINVAL
+	case ENOENT:
+		return errENOENT
+	}
+	return e
+}
+
+type Errno = syscall.Errno
+
+// _unsafeSlice is the runtime representation of a slice.
+type _unsafeSlice struct {
+	Data unsafe.Pointer
+	Len  int
+	Cap  int
+}
