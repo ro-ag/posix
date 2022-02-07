@@ -86,7 +86,7 @@ func Munlockall() error {
 }
 
 //ShmUnlink
-//Remove a shared memory object name.
+//Remove a shared memory object shmName.
 func ShmUnlink(path string) (err error) {
 	return shmUnlink(path)
 }
@@ -115,7 +115,7 @@ func Fchown(fd int, uid int, gid int) error {
 
 //Fchmod
 //To change the permissions of a shared memory object.
-func Fchmod(fd int, mode uint32) error {
+func Fchmod(fd int, mode int) error {
 	return fchmod(fd, mode)
 }
 

@@ -235,7 +235,7 @@ var libc_fchown_trampoline_addr uintptr
 
 /* -------------------------------------------------------------------------------------------------------------------*/
 
-func fchmod(fd int, mode uint32) (err error) {
+func fchmod(fd int, mode int) (err error) {
 	_, _, e1 := syscall_syscall(libc_fchmod_trampoline_addr, uintptr(fd), uintptr(mode), 0)
 	if e1 != 0 {
 		err = errnoErr(e1)

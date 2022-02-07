@@ -10,6 +10,7 @@ const (
 	EINVAL     = syscall.EINVAL
 	EAGAIN     = syscall.EAGAIN
 	ENOENT     = syscall.ENOENT
+	EFAULT     = syscall.EFAULT
 	O_RDWR     = syscall.O_RDWR     // open for reading and writing
 	O_CREAT    = syscall.O_CREAT    // create if nonexistent
 	O_EXCL     = syscall.O_EXCL     // error if already exists
@@ -56,7 +57,26 @@ const (
 	S_ISUID  = syscall.S_ISUID  // This is the set-user-ID on execute bit, usually 04000. See How Change Persona.
 	S_ISGID  = syscall.S_ISGID  // This is the set-group-ID on execute bit, usually 02000. See How Change Persona.
 	S_ISVTX  = syscall.S_ISVTX  // This is the sticky bit, usually 01000.
+)
 
+const (
+	MFD_ALLOW_SEALING = 0x2
+	MFD_CLOEXEC       = 0x1
+	MFD_HUGETLB       = 0x4
+	MFD_HUGE_16GB     = -0x78000000
+	MFD_HUGE_16MB     = 0x60000000
+	MFD_HUGE_1GB      = 0x78000000
+	MFD_HUGE_1MB      = 0x50000000
+	MFD_HUGE_256MB    = 0x70000000
+	MFD_HUGE_2GB      = 0x7c000000
+	MFD_HUGE_2MB      = 0x54000000
+	MFD_HUGE_32MB     = 0x64000000
+	MFD_HUGE_512KB    = 0x4c000000
+	MFD_HUGE_512MB    = 0x74000000
+	MFD_HUGE_64KB     = 0x40000000
+	MFD_HUGE_8MB      = 0x5c000000
+	MFD_HUGE_MASK     = 0x3f
+	MFD_HUGE_SHIFT    = 0x1a
 )
 
 // File Fcntl
