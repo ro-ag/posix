@@ -39,24 +39,36 @@ These symbolic constants are defined for the file mode bits that control access 
 */
 //goland:noinspection GoSnakeCaseUsage
 const (
-	S_IRUSR  = syscall.S_IRUSR  // Read permission bit for the owner of the file. On many systems this bit is 0400.
-	S_IREAD  = syscall.S_IREAD  // Deprecated: S_IREAD is an Obsolete synonym provided for BSD compatibility
-	S_IWUSR  = syscall.S_IWUSR  // Write permission bit for the owner of the file. Usually 0200.
-	S_IWRITE = syscall.S_IWRITE // Deprecated: S_IWRITE is an obsolete synonym provided for BSD compatibility.
-	S_IXUSR  = syscall.S_IXUSR  // Execute (for ordinary files) or search (for directories) permission bit for the owner of the file. Usually 0100.
-	S_IEXEC  = syscall.S_IEXEC  // Deprecated: S_IEXEC is an obsolete synonym provided for BSD compatibility.
-	S_IRWXU  = syscall.S_IRWXU  // This is equivalent to ‘(S_IRUSR | S_IWUSR | S_IXUSR)’.
-	S_IRGRP  = syscall.S_IRGRP  // Read permission bit for the group owner of the file. Usually 040.
-	S_IWGRP  = syscall.S_IWGRP  // Write permission bit for the group owner of the file. Usually 020.
-	S_IXGRP  = syscall.S_IXGRP  // Execute or search permission bit for the group owner of the file. Usually 010.
-	S_IRWXG  = syscall.S_IRWXG  // This is equivalent to ‘(S_IRGRP | S_IWGRP | S_IXGRP)’.
-	S_IROTH  = syscall.S_IROTH  // Read permission bit for other users. Usually 04.
-	S_IWOTH  = syscall.S_IWOTH  // Write permission bit for other users. Usually 02.
-	S_IXOTH  = syscall.S_IXOTH  // Execute or search permission bit for other users. Usually 01.
-	S_IRWXO  = syscall.S_IRWXO  // This is equivalent to ‘(S_IROTH | S_IWOTH | S_IXOTH)’.
-	S_ISUID  = syscall.S_ISUID  // This is the set-user-ID on execute bit, usually 04000. See How Change Persona.
-	S_ISGID  = syscall.S_ISGID  // This is the set-group-ID on execute bit, usually 02000. See How Change Persona.
-	S_ISVTX  = syscall.S_ISVTX  // This is the sticky bit, usually 01000.
+	S_IRUSR    = syscall.S_IRUSR  // Read permission bit for the owner of the file. On many systems this bit is 0400.
+	S_IREAD    = syscall.S_IREAD  // Deprecated: S_IREAD is an Obsolete synonym provided for BSD compatibility
+	S_IWUSR    = syscall.S_IWUSR  // Write permission bit for the owner of the file. Usually 0200.
+	S_IWRITE   = syscall.S_IWRITE // Deprecated: S_IWRITE is an obsolete synonym provided for BSD compatibility.
+	S_IXUSR    = syscall.S_IXUSR  // Execute (for ordinary files) or search (for directories) permission bit for the owner of the file. Usually 0100.
+	S_IEXEC    = syscall.S_IEXEC  // Deprecated: S_IEXEC is an obsolete synonym provided for BSD compatibility.
+	S_IRWXU    = syscall.S_IRWXU  // This is equivalent to ‘(S_IRUSR | S_IWUSR | S_IXUSR)’.
+	S_IRGRP    = syscall.S_IRGRP  // Read permission bit for the group owner of the file. Usually 040.
+	S_IWGRP    = syscall.S_IWGRP  // Write permission bit for the group owner of the file. Usually 020.
+	S_IXGRP    = syscall.S_IXGRP  // Execute or search permission bit for the group owner of the file. Usually 010.
+	S_IRWXG    = syscall.S_IRWXG  // This is equivalent to ‘(S_IRGRP | S_IWGRP | S_IXGRP)’.
+	S_IROTH    = syscall.S_IROTH  // Read permission bit for other users. Usually 04.
+	S_IWOTH    = syscall.S_IWOTH  // Write permission bit for other users. Usually 02.
+	S_IXOTH    = syscall.S_IXOTH  // Execute or search permission bit for other users. Usually 01.
+	S_IRWXO    = syscall.S_IRWXO  // This is equivalent to ‘(S_IROTH | S_IWOTH | S_IXOTH)’.
+	S_ISUID    = syscall.S_ISUID  // This is the set-user-ID on execute bit, usually 04000. See How Change Persona.
+	S_ISGID    = syscall.S_ISGID  // This is the set-group-ID on execute bit, usually 02000. See How Change Persona.
+	S_ISVTX    = syscall.S_ISVTX  // This is the sticky bit, usually 01000.
+	FP_SPECIAL = 1
+)
+
+const (
+	S_IFMT   = syscall.S_IFMT   // [XSI] type of file mask
+	S_IFIFO  = syscall.S_IFIFO  // [XSI] named pipe (fifo)
+	S_IFCHR  = syscall.S_IFCHR  // [XSI] character special
+	S_IFDIR  = syscall.S_IFDIR  // [XSI] directory
+	S_IFBLK  = syscall.S_IFBLK  // [XSI] block special
+	S_IFREG  = syscall.S_IFREG  // [XSI] regular
+	S_IFLNK  = syscall.S_IFLNK  // [XSI] symbolic link
+	S_IFSOCK = syscall.S_IFSOCK // [XSI] socket
 )
 
 const (

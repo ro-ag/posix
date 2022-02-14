@@ -5,16 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d2a9dcf0-cff8-490c-ae88-47b8807dd2d8" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/posix_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/shm_open_darwin_amd64_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/utils.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/asm_darwin_amd64.s" beforeDir="false" afterPath="$PROJECT_DIR$/asm_darwin_amd64.s" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/const.go" beforeDir="false" afterPath="$PROJECT_DIR$/const.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/posix.go" beforeDir="false" afterPath="$PROJECT_DIR$/posix.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/posix_darwin_amd64.go" beforeDir="false" afterPath="$PROJECT_DIR$/posix_darwin_amd64.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/posix_linux_amd64.go" beforeDir="false" afterPath="$PROJECT_DIR$/posix_linux_amd64.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/posix_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/posix_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/shm_open_darwin_amd64.go" beforeDir="false" afterPath="$PROJECT_DIR$/shm_open_darwin_amd64.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -29,7 +26,7 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" url="file:///usr/local/Cellar/go/1.17.5/libexec" />
+  <component name="GOROOT" url="file://$USER_HOME$/sdk/go1.17.6" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -70,8 +67,8 @@
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
     <property name="settings.editor.selected.configurable" value="preferences.fileTypes" />
   </component>
-  <component name="RunManager" selected="Go Test.TestClose/failure in posix">
-    <configuration name="TestClose in posix" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+  <component name="RunManager">
+    <configuration name="go test posix" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="posix" />
       <working_directory value="$PROJECT_DIR$" />
       <kind value="PACKAGE" />
@@ -79,60 +76,11 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestClose\E$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="TestClose/failure in posix" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="posix" />
-      <working_directory value="$PROJECT_DIR$" />
-      <kind value="PACKAGE" />
-      <package value="posix" />
-      <directory value="$PROJECT_DIR$" />
-      <filePath value="$PROJECT_DIR$" />
-      <framework value="gotest" />
-      <pattern value="^\QTestClose\E$/^\Qfailure\E$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="TestClose/normal in posix" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="posix" />
-      <working_directory value="$PROJECT_DIR$" />
-      <kind value="PACKAGE" />
-      <package value="posix" />
-      <directory value="$PROJECT_DIR$" />
-      <filePath value="$PROJECT_DIR$" />
-      <framework value="gotest" />
-      <pattern value="^\QTestClose\E$/^\Qnormal\E$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="TestFchmod in posix" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="posix" />
-      <working_directory value="$PROJECT_DIR$" />
-      <kind value="PACKAGE" />
-      <package value="posix" />
-      <directory value="$PROJECT_DIR$" />
-      <filePath value="$PROJECT_DIR$" />
-      <framework value="gotest" />
-      <pattern value="^\QTestFchmod\E$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="TestFchmod/Normal in posix" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="posix" />
-      <working_directory value="$PROJECT_DIR$" />
-      <kind value="PACKAGE" />
-      <package value="posix" />
-      <directory value="$PROJECT_DIR$" />
-      <filePath value="$PROJECT_DIR$" />
-      <framework value="gotest" />
-      <pattern value="^\QTestFchmod\E$/^\QNormal\E$" />
       <method v="2" />
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Test.TestClose/failure in posix" />
-        <item itemvalue="Go Test.TestClose in posix" />
-        <item itemvalue="Go Test.TestFchmod/Normal in posix" />
-        <item itemvalue="Go Test.TestFchmod in posix" />
-        <item itemvalue="Go Test.TestClose/normal in posix" />
+        <item itemvalue="Go Test.go test posix" />
       </list>
     </recent_temporary>
   </component>
@@ -172,15 +120,10 @@
           <line>48</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/shm_open_darwin_amd64.go</url>
-          <line>86</line>
-          <option name="timeStamp" value="2" />
-        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/posix$go_test_posix.out" NAME="go test posix Coverage Results" MODIFIED="1643918378046" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
+    <SUITE FILE_PATH="coverage/posix$go_test_posix.out" NAME="go test posix Coverage Results" MODIFIED="1644522654418" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
   </component>
 </project>

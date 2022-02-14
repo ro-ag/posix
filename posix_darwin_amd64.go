@@ -7,14 +7,17 @@ type Timespec struct {
 	Nsec int64
 }
 
+type ModeT uint16
+type DevT int32
+
 type Stat_t struct {
-	Dev     int32
-	Mode    uint16
+	Dev     DevT
+	Mode    ModeT
 	Nlink   uint16
 	Ino     uint64
 	Uid     uint32
 	Gid     uint32
-	Rdev    int32
+	Rdev    DevT
 	Atim    Timespec
 	Mtim    Timespec
 	Ctim    Timespec

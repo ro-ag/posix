@@ -1,10 +1,8 @@
 package posix
 
 import (
-	"io/ioutil"
-	"os"
-
-	//_ "golang.org/x/sys/unix"
+	_ "golang.org/x/sys/unix"
+	"log"
 	"reflect"
 	"syscall"
 	"testing"
@@ -68,7 +66,7 @@ func TestClose(t *testing.T) {
 			var fd int
 			var err error
 			if tt.create {
-				fd, err = ShmAnonymous("test")
+				fd, err = MemfdCreate("test", MFD_ALLOW_SEALING)
 				if err != nil {
 					t.Errorf("ShmAnonymous = %v", err)
 				} else {
@@ -105,14 +103,20 @@ func TestFchmod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.create {
-				f, err := ioutil.TempFile("/tmp", "test.*.txt")
+				fd, err := MemfdCreate("test-anon", MFD_ALLOW_SEALING)
+				var fs Stat_t
+				if err = Fstat(fd, &fs); err != nil {
+					t.Errorf("Fstat() error = %v", err)
+				}
+				fs.DisplayStatInfo()
+				log.Println("fd:", fd, FilePermStr(ModeT(fs.Mode), 0))
 				if err != nil {
 					t.Errorf("TempFile = %v", err)
 				}
 				defer func() {
-					_ = os.Remove(f.Name())
+					_ = Close(fd)
 				}()
-				tt.args.fd = int(f.Fd())
+				tt.args.fd = fd
 			}
 			if err := Fchmod(tt.args.fd, tt.args.mode); (err != nil) != tt.wantErr {
 				t.Errorf("Fchmod() error = %v, wantErr %v", err, tt.wantErr)
@@ -132,8 +136,11 @@ func TestFchown(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		//{"Zero", args{0, S_IRUSR}, false, true},
+		//{"Fail", args{50, S_IRUSR}, false, true},
+		//{"Normal", args{0, S_IWGRP}, true, false},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := Fchown(tt.args.fd, tt.args.uid, tt.args.gid); (err != nil) != tt.wantErr {

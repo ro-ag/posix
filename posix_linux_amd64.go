@@ -166,15 +166,18 @@ type Timespec struct {
 	Nsec int64
 }
 
+type ModeT uint32
+type DevT uint64
+
 type Stat_t struct {
-	Dev     uint64
+	Dev     DevT
 	Ino     uint64
 	Nlink   uint64
-	Mode    uint32
+	Mode    ModeT
 	Uid     uint32
 	Gid     uint32
 	_       int32
-	Rdev    uint64
+	Rdev    DevT
 	Size    int64
 	Blksize int64
 	Blocks  int64
@@ -185,7 +188,7 @@ type Stat_t struct {
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-func fchmod(fd int, mode uint32) (err error) {
+func fchmod(fd int, mode int) (err error) {
 	_, _, e1 := _Syscall(_SYS_FCHMOD, uintptr(fd), uintptr(mode), 0)
 	if e1 != 0 {
 		err = errnoErr(e1)

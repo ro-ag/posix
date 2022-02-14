@@ -40,6 +40,8 @@ func MemfdCreate(name string, flags int) (fd int, err error) {
 
 var rgxFm = regexp.MustCompile(`^memfd:(\d{3}):(.+)`)
 
+/* -------------------------------------------------------------------------------------------------------------------*/
+
 func (m *mfd) MemfdCreate(name string, flags int) (fd int, err error) {
 	m.Lock()
 	defer m.Unlock()
@@ -84,7 +86,7 @@ func (m *mfd) MemfdCreate(name string, flags int) (fd int, err error) {
 		}
 	}
 
-	if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR); err != nil {
+	if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR|S_IRGRP); err != nil {
 		return
 	}
 
@@ -134,9 +136,9 @@ func ShmAnonymous(name string) (fd int, err error) {
 	}
 
 	/* Delete shmName but keep the file descriptor */
-	//if err = shmUnlink(uniName); err != nil {
-	//	return
-	//}
+	if err = shmUnlink(uniName); err != nil {
+		return
+	}
 
 	/* Remove Flag FD_CLOEXEC which deletes the file if it needs to be passed to another process */
 	if err = remCloseOnExec(fd); err != nil {
@@ -146,6 +148,7 @@ func ShmAnonymous(name string) (fd int, err error) {
 	return
 }
 
+/* -------------------------------------------------------------------------------------------------------------------*/
 func remCloseOnExec(fd int) (err error) {
 	var arg int
 	if arg, err = Fcntl(fd, F_GETFD, 0); err != nil {
@@ -162,6 +165,7 @@ func remCloseOnExec(fd int) (err error) {
 	return
 }
 
+/* -------------------------------------------------------------------------------------------------------------------*/
 func shmOpen(path string, oflag int, mode uint32) (fd int, err error) {
 	var _p0 *byte
 	_p0, err = syscall.BytePtrFromString(path)
