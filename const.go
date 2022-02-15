@@ -89,6 +89,12 @@ const (
 	MFD_HUGE_8MB      = 0x5c000000
 	MFD_HUGE_MASK     = 0x3f
 	MFD_HUGE_SHIFT    = 0x1a
+	MAP_ANON          = syscall.MAP_ANON
+	MAP_PRIVATE       = syscall.MAP_PRIVATE
+	MAP_SHARED        = syscall.MAP_SHARED
+	MAP_ANONYMOUS     = syscall.MAP_ANONYMOUS
+	MCL_CURRENT       = syscall.MCL_CURRENT
+	MCL_FUTURE        = syscall.MCL_FUTURE
 )
 
 // File Fcntl

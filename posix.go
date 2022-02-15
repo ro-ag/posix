@@ -19,20 +19,21 @@ func Ftruncate(fd int, length int) error {
 	return ftruncate(fd, length)
 }
 
-//Madvice
+//Madvise
 //This system call is used to give advice or directions to
 //the kernel about the address range beginning at address addr and
 //with size length bytes In most cases, the goal of such advice is
 //to improve system or application performance.
-func Madvice(b []byte, behav int) error {
+func Madvise(b []byte, behav int) error {
 	return madvise(b, behav)
 }
 
-//Mmap
+//MmapAt
 //Map the shared memory object into the virtual address
 //space of the calling process.
-func Mmap(address unsafe.Pointer, length uintptr, prot int, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
-	return mapper.Mmap(address, length, prot, flags, fd, offset)
+//MmapAt has the same parameters as the C mmap implementation where the address is exposed.
+func MmapAt(address unsafe.Pointer, length uintptr, prot accFlags, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
+	return mapper.Mmap(address, length, int(prot), flags, fd, offset)
 }
 
 //Munmap
@@ -83,6 +84,16 @@ func Mlockall(flags int) error {
 //manager.
 func Munlockall() error {
 	return munlockall()
+}
+
+//Msync flushes changes made to the in-core copy of a file that
+//was mapped into memory using mmap(2) back to the filesystem.
+//Without use of this call, there is no guarantee that changes are
+//written back before munmap(2) is called.  To be more precise, the
+//part of the file that corresponds to the memory area starting at
+//addr and having length 'length' is updated.
+func Msync(b []byte, flags int) error {
+	return msync(b, flags)
 }
 
 //ShmUnlink

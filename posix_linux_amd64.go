@@ -36,9 +36,9 @@ func ftruncate(fd int, length int) (err error) {
 
 /* -------------------------------------------------------------------------------------------------------------------*/
 
-func mmap(addr uintptr, length uintptr, prot int, flags int, fd int, offset int64) (xaddr uintptr, err error) {
+func mmap(addr uintptr, length uintptr, prot int, flags int, fd int, offset int64) (addr2 uintptr, err error) {
 	r0, _, e1 := _Syscall6(_SYS_MMAP, addr, length, uintptr(prot), uintptr(flags), uintptr(fd), uintptr(offset))
-	xaddr = uintptr(r0)
+	addr2 = r0
 	if e1 != 0 {
 		err = errnoErr(e1)
 	}
@@ -135,6 +135,22 @@ func munlockall() (err error) {
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
+
+func msync(b []byte, flags int) (err error) {
+	var _p0 unsafe.Pointer
+	if len(b) > 0 {
+		_p0 = unsafe.Pointer(&b[0])
+	} else {
+		_p0 = unsafe.Pointer(&_zero)
+	}
+	_, _, e1 := _Syscall(_SYS_MSYNC, uintptr(_p0), uintptr(len(b)), uintptr(flags))
+	if e1 != 0 {
+		err = errnoErr(e1)
+	}
+	return
+}
+
+/*--------------------------------------------------------------------------------------------------------------------*/
 func closeFd(fd int) (err error) {
 	_, _, e1 := _Syscall(_SYS_CLOSE, uintptr(fd), 0, 0)
 	if e1 != 0 {
@@ -169,6 +185,7 @@ type Timespec struct {
 type ModeT uint32
 type DevT uint64
 
+//goland:noinspection GoSnakeCaseUsage
 type Stat_t struct {
 	Dev     DevT
 	Ino     uint64
@@ -219,6 +236,7 @@ func _RawSyscall(trap, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
 func _RawSyscall6(trap, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
 
 /*--------------------------------------------------------------------------------------------------------------------*/
+//goland:noinspection GoSnakeCaseUsage
 const (
 	_SYS_FTRUNCATE    = 77
 	_SYS_MEMFD_CREATE = 319
@@ -230,6 +248,7 @@ const (
 	_SYS_MUNLOCK      = 150
 	_SYS_MLOCKALL     = 151
 	_SYS_MUNLOCKALL   = 152
+	_SYS_MSYNC        = 26
 	_SYS_CLOSE        = 3
 	_SYS_FCHOWN       = 93
 	_SYS_FSTAT        = 5
