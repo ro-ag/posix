@@ -2,8 +2,6 @@ package posix_test
 
 import (
 	"fmt"
-	"golang.org/x/sys/unix"
-	_ "golang.org/x/sys/unix"
 	"io/ioutil"
 	"os"
 	"posix"
@@ -181,7 +179,7 @@ func TestFcntl(t *testing.T) {
 const FixedAddress uintptr = 0x20000000000
 
 func TestMmap(t *testing.T) {
-	b, a, err := posix.MmapAt(unsafe.Pointer(FixedAddress), uintptr(syscall.Getpagesize()), posix.PROT_NONE, unix.MAP_ANON|posix.MAP_PRIVATE, 0, 0)
+	b, a, err := posix.Mmap(unsafe.Pointer(FixedAddress), uintptr(syscall.Getpagesize()), posix.PROT_NONE, posix.MAP_ANON|posix.MAP_PRIVATE, 0, 0)
 	if err != nil {
 		t.Fatalf("Mmap: %v", err)
 	}
@@ -192,18 +190,18 @@ func TestMmap(t *testing.T) {
 		t.Fatalf("Mprotect: %v", err)
 	}
 
-	unix.Getpagesize()
+	posix.Getpagesize()
 	b[0] = 42
 
 	if runtime.GOOS == "aix" {
 		t.Skip("msync returns invalid argument for AIX, skipping msync test")
 	} else {
-		if err := posix.Msync(b, unix.MS_SYNC); err != nil {
+		if err := posix.Msync(b, posix.MS_SYNC); err != nil {
 			t.Fatalf("Msync: %v", err)
 		}
 	}
 
-	if err := posix.Madvise(b, unix.MADV_DONTNEED); err != nil {
+	if err := posix.Madvise(b, posix.MADV_DONTNEED); err != nil {
 		t.Fatalf("Madvise: %v", err)
 	}
 
@@ -211,7 +209,7 @@ func TestMmap(t *testing.T) {
 		t.Fatalf("Munlock: %v", err)
 	}
 
-	if err := posix.Mlockall(unix.MCL_CURRENT); err != nil {
+	if err := posix.Mlockall(posix.MCL_CURRENT); err != nil {
 		t.Fatalf("Mlockall: %v", err)
 	}
 
@@ -231,6 +229,10 @@ func TestMmap(t *testing.T) {
 func createFd(t *testing.T) int {
 	fd, err := posix.MemfdCreate("test-anon", posix.MFD_ALLOW_SEALING)
 	if err != nil {
+		t.Error(err)
+		return -1
+	}
+	if err = posix.Ftruncate(fd, posix.Getpagesize()); err != nil {
 		t.Error(err)
 		return -1
 	}

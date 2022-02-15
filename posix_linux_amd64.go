@@ -5,13 +5,7 @@ import (
 	"unsafe"
 )
 
-//MemfdCreate creates an anonymous file and returns a file
-//descriptor that refers to it.  The file behaves like a regular
-//file, and so can be modified, truncated, memory-mapped, and so
-//on.  However, unlike a regular file, it lives in RAM and has a
-//volatile backing storage.  Once all references to the file are
-//dropped, it is automatically released.
-func MemfdCreate(name string, flags int) (fd int, err error) {
+func memfdCreate(name string, flags int) (fd int, err error) {
 	var _p0 *byte
 	_p0, err = syscall.BytePtrFromString(name)
 	if err != nil {

@@ -60,6 +60,7 @@ const (
 	FP_SPECIAL = 1
 )
 
+//goland:noinspection GoSnakeCaseUsage
 const (
 	S_IFMT   = syscall.S_IFMT   // [XSI] type of file mask
 	S_IFIFO  = syscall.S_IFIFO  // [XSI] named pipe (fifo)
@@ -71,6 +72,7 @@ const (
 	S_IFSOCK = syscall.S_IFSOCK // [XSI] socket
 )
 
+//goland:noinspection GoSnakeCaseUsage
 const (
 	MFD_ALLOW_SEALING = 0x2
 	MFD_CLOEXEC       = 0x1
@@ -89,12 +91,70 @@ const (
 	MFD_HUGE_8MB      = 0x5c000000
 	MFD_HUGE_MASK     = 0x3f
 	MFD_HUGE_SHIFT    = 0x1a
-	MAP_ANON          = syscall.MAP_ANON
-	MAP_PRIVATE       = syscall.MAP_PRIVATE
-	MAP_SHARED        = syscall.MAP_SHARED
-	MAP_ANONYMOUS     = syscall.MAP_ANONYMOUS
 	MCL_CURRENT       = syscall.MCL_CURRENT
 	MCL_FUTURE        = syscall.MCL_FUTURE
+	MADV_DOFORK       = syscall.MADV_DOFORK
+	MADV_DONTFORK     = syscall.MADV_DONTFORK
+	MADV_DONTNEED     = syscall.MADV_DONTNEED
+	MADV_HUGEPAGE     = syscall.MADV_HUGEPAGE
+	MADV_HWPOISON     = syscall.MADV_HWPOISON
+	MADV_MERGEABLE    = syscall.MADV_MERGEABLE
+	MADV_NOHUGEPAGE   = syscall.MADV_NOHUGEPAGE
+	MADV_NORMAL       = syscall.MADV_NORMAL
+	MADV_RANDOM       = syscall.MADV_RANDOM
+	MADV_REMOVE       = syscall.MADV_REMOVE
+	MADV_SEQUENTIAL   = syscall.MADV_SEQUENTIAL
+	MADV_UNMERGEABLE  = syscall.MADV_UNMERGEABLE
+	MADV_WILLNEED     = syscall.MADV_WILLNEED
+	MAP_32BIT         = syscall.MAP_32BIT
+	MAP_ANON          = syscall.MAP_ANON      // Don't use a file.
+	MAP_ANONYMOUS     = syscall.MAP_ANONYMOUS // Don't use a file.
+	MAP_DENYWRITE     = syscall.MAP_DENYWRITE
+	MAP_EXECUTABLE    = syscall.MAP_EXECUTABLE
+	MAP_FILE          = syscall.MAP_FILE
+	MAP_FIXED         = syscall.MAP_FIXED // Interpret address exactly.
+	MAP_GROWSDOWN     = syscall.MAP_GROWSDOWN
+	MAP_HUGETLB       = syscall.MAP_HUGETLB
+	MAP_LOCKED        = syscall.MAP_LOCKED
+	MAP_NONBLOCK      = syscall.MAP_NONBLOCK
+	MAP_NORESERVE     = syscall.MAP_NORESERVE
+	MAP_POPULATE      = syscall.MAP_POPULATE
+	MAP_PRIVATE       = syscall.MAP_PRIVATE // Changes are private.
+	MAP_SHARED        = syscall.MAP_SHARED  // Share changes.
+	MAP_STACK         = syscall.MAP_STACK
+	MAP_TYPE          = syscall.MAP_TYPE
+	MS_ACTIVE         = syscall.MS_ACTIVE
+	MS_ASYNC          = syscall.MS_ASYNC // Perform synchronous page faults for the mapping.
+	MS_BIND           = syscall.MS_BIND
+	MS_DIRSYNC        = syscall.MS_DIRSYNC
+	MS_INVALIDATE     = syscall.MS_INVALIDATE
+	MS_I_VERSION      = syscall.MS_I_VERSION
+	MS_KERNMOUNT      = syscall.MS_KERNMOUNT
+	MS_MANDLOCK       = syscall.MS_MANDLOCK
+	MS_MGC_MSK        = syscall.MS_MGC_MSK
+	MS_MGC_VAL        = syscall.MS_MGC_VAL
+	MS_MOVE           = syscall.MS_MOVE
+	MS_NOATIME        = syscall.MS_NOATIME
+	MS_NODEV          = syscall.MS_NODEV
+	MS_NODIRATIME     = syscall.MS_NODIRATIME
+	MS_NOEXEC         = syscall.MS_NOEXEC
+	MS_NOSUID         = syscall.MS_NOSUID
+	MS_NOUSER         = syscall.MS_NOUSER
+	MS_POSIXACL       = syscall.MS_POSIXACL
+	MS_PRIVATE        = syscall.MS_PRIVATE
+	MS_RDONLY         = syscall.MS_RDONLY
+	MS_REC            = syscall.MS_REC
+	MS_RELATIME       = syscall.MS_RELATIME
+	MS_REMOUNT        = syscall.MS_REMOUNT
+	MS_RMT_MASK       = syscall.MS_RMT_MASK
+	MS_SHARED         = syscall.MS_SHARED
+	MS_SILENT         = syscall.MS_SILENT
+	MS_SLAVE          = syscall.MS_SLAVE
+	MS_STRICTATIME    = syscall.MS_STRICTATIME
+	MS_SYNC           = syscall.MS_SYNC
+	MS_SYNCHRONOUS    = syscall.MS_SYNCHRONOUS
+	MS_UNBINDABLE     = syscall.MS_UNBINDABLE
+	NAME_MAX          = syscall.NAME_MAX
 )
 
 // File Fcntl

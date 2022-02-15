@@ -25,16 +25,7 @@ var _mfd = &mfd{
 	active: make(map[string]file),
 }
 
-//MemfdCreate creates an anonymous file and returns a file
-//descriptor that refers to it.  The file behaves like a regular
-//file, and so can be modified, truncated, memory-mapped, and so
-//on.  However, unlike a regular file, it lives in RAM and has a
-//volatile backing storage.  Once all references to the file are
-//dropped, it is automatically released.
-//
-//NOTE: this is an Emulation of the original function in Linux
-//      is made for testing only
-func MemfdCreate(name string, flags int) (fd int, err error) {
+func memfdCreate(name string, flags int) (fd int, err error) {
 	return _mfd.MemfdCreate(name, flags)
 }
 

@@ -4,12 +4,15 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1edbf9c1-e257-4a74-bd4d-985b3bfbdd97" name="Changes" comment="">
+    <list default="true" id="1edbf9c1-e257-4a74-bd4d-985b3bfbdd97" name="Changes" comment="add readme">
+      <change afterPath="$PROJECT_DIR$/Readme.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/const.go" beforeDir="false" afterPath="$PROJECT_DIR$/const.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/posix.go" beforeDir="false" afterPath="$PROJECT_DIR$/posix.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/posix_linux_amd64.go" beforeDir="false" afterPath="$PROJECT_DIR$/posix_linux_amd64.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/posix_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/posix_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shm_open_darwin_amd64.go" beforeDir="false" afterPath="$PROJECT_DIR$/shm_open_darwin_amd64.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -104,11 +107,22 @@
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/posix$TestMmap_in_posix.out" NAME="TestMmap in posix Coverage Results" MODIFIED="1644903241860" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
-    <SUITE FILE_PATH="coverage/posix$go_test_posix.out" NAME="go test posix Coverage Results" MODIFIED="1644903362308" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
+    <SUITE FILE_PATH="coverage/posix$go_test_posix.out" NAME="go test posix Coverage Results" MODIFIED="1644935787049" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
   </component>
 </project>

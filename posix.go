@@ -1,6 +1,7 @@
 package posix
 
 import (
+	"syscall"
 	"unsafe"
 )
 
@@ -28,11 +29,11 @@ func Madvise(b []byte, behav int) error {
 	return madvise(b, behav)
 }
 
-//MmapAt
+//Mmap
 //Map the shared memory object into the virtual address
 //space of the calling process.
 //MmapAt has the same parameters as the C mmap implementation where the address is exposed.
-func MmapAt(address unsafe.Pointer, length uintptr, prot accFlags, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
+func Mmap(address unsafe.Pointer, length uintptr, prot accFlags, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
 	return mapper.Mmap(address, length, int(prot), flags, fd, offset)
 }
 
@@ -134,6 +135,27 @@ func Fchmod(fd int, mode int) error {
 //open file descriptor fd.  The operation is determined by cmd
 func Fcntl(fd int, cmd int, arg int) (val int, err error) {
 	return fcntl(fd, cmd, arg)
+}
+
+//Getpagesize
+//The function returns the number of bytes in a memory page,
+//where "page" is a fixed-length block, the unit for
+//memory allocation and file mapping performed by mmap
+func Getpagesize() int {
+	return syscall.Getpagesize()
+}
+
+//MemfdCreate creates an anonymous file and returns a file
+//descriptor that refers to it.  The file behaves like a regular
+//file, and so can be modified, truncated, memory-mapped, and so
+//on.  However, unlike a regular file, it lives in RAM and has a
+//volatile backing storage.  Once all references to the file are
+//dropped, it is automatically released.
+//
+//NOTE: this is an Emulation of the original function in Linux
+//      is made for testing only
+func MemfdCreate(name string, flags int) (fd int, err error) {
+	return memfdCreate(name,flags)
 }
 
 // Single-word zero for use when we need a valid pointer to 0 bytes.
