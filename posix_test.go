@@ -2,9 +2,9 @@ package posix_test
 
 import (
 	"fmt"
+	"github.com/ro-ag/posix"
 	"io/ioutil"
 	"os"
-	"posix"
 	"runtime"
 	"syscall"
 	"testing"
