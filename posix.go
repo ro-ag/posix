@@ -33,8 +33,8 @@ func Madvise(b []byte, behav int) error {
 //Map the shared memory object into the virtual address
 //space of the calling process.
 //MmapAt has the same parameters as the C mmap implementation where the address is exposed.
-func Mmap(address unsafe.Pointer, length uintptr, prot accFlags, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
-	return mapper.Mmap(address, length, int(prot), flags, fd, offset)
+func Mmap(address unsafe.Pointer, length int, prot accFlags, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
+	return mapper.Mmap(address, uintptr(length), int(prot), flags, fd, offset)
 }
 
 //Munmap
@@ -155,7 +155,7 @@ func Getpagesize() int {
 //NOTE: this is an Emulation of the original function in Linux
 //      is made for testing only
 func MemfdCreate(name string, flags int) (fd int, err error) {
-	return memfdCreate(name,flags)
+	return memfdCreate(name, flags)
 }
 
 // Single-word zero for use when we need a valid pointer to 0 bytes.

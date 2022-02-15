@@ -179,7 +179,7 @@ func TestFcntl(t *testing.T) {
 const FixedAddress uintptr = 0x20000000000
 
 func TestMmap(t *testing.T) {
-	b, a, err := posix.Mmap(unsafe.Pointer(FixedAddress), uintptr(syscall.Getpagesize()), posix.PROT_NONE, posix.MAP_ANON|posix.MAP_PRIVATE, 0, 0)
+	b, a, err := posix.Mmap(unsafe.Pointer(FixedAddress), syscall.Getpagesize(), posix.PROT_NONE, posix.MAP_ANON|posix.MAP_PRIVATE, 0, 0)
 	if err != nil {
 		t.Fatalf("Mmap: %v", err)
 	}
