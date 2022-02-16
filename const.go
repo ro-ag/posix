@@ -21,14 +21,12 @@ const (
 	O_CLOEXEC  = syscall.O_CLOEXEC
 )
 
-type accFlags int
-
 //goland:noinspection GoSnakeCaseUsage
 const (
-	PROT_NONE  accFlags = syscall.PROT_NONE  // The memory cannot be accessed at all.
-	PROT_READ  accFlags = syscall.PROT_READ  // The memory can be read.
-	PROT_WRITE accFlags = syscall.PROT_WRITE // The memory can be modified.
-	PROT_EXEC  accFlags = syscall.PROT_EXEC  // The memory can be executed.
+	PROT_NONE  = syscall.PROT_NONE  // The memory cannot be accessed at all.
+	PROT_READ  = syscall.PROT_READ  // The memory can be read.
+	PROT_WRITE = syscall.PROT_WRITE // The memory can be modified.
+	PROT_EXEC  = syscall.PROT_EXEC  // The memory can be executed.
 )
 
 /*
