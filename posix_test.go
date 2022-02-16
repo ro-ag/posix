@@ -88,6 +88,10 @@ func TestClose(t *testing.T) {
 }
 
 func TestFchmod(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("fchmod doesn't work on shared memory in MacOSx")
+		return
+	}
 	type args struct {
 		fd   int
 		mode int
@@ -118,9 +122,13 @@ func TestFchmod(t *testing.T) {
 }
 
 func TestFchown(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("fchown doesn't work on shared memory in MacOSx")
+		return
+	}
+
 	uid := os.Geteuid()
 	gid := os.Getgid()
-
 	type args struct {
 		fd  int
 		uid int
@@ -178,48 +186,76 @@ func TestFcntl(t *testing.T) {
 
 const FixedAddress uintptr = 0x20000000000
 
-func TestMmap(t *testing.T) {
-	b, a, err := posix.Mmap(unsafe.Pointer(FixedAddress), syscall.Getpagesize(), posix.PROT_NONE, posix.MAP_ANON|posix.MAP_PRIVATE, 0, 0)
-	if err != nil {
-		t.Fatalf("Mmap: %v", err)
-	}
-	if a != FixedAddress {
-		t.Fatalf("Expecting address %p but have %p", unsafe.Pointer(FixedAddress), unsafe.Pointer(a))
-	}
-	if err := posix.Mprotect(b, posix.PROT_READ|posix.PROT_WRITE); err != nil {
-		t.Fatalf("Mprotect: %v", err)
-	}
+func TestMemory(t *testing.T) {
+	var (
+		b   []byte
+		a   uintptr
+		err error
+	)
 
-	posix.Getpagesize()
-	b[0] = 42
+	t.Run("Mmap", func(t *testing.T) {
+		b, a, err = posix.Mmap(unsafe.Pointer(FixedAddress), posix.Getpagesize(), posix.PROT_NONE, posix.MAP_ANON|posix.MAP_PRIVATE, 0, 0)
+		if err != nil {
+			t.Fatalf("Mmap: %v", err)
+		}
+		if a != FixedAddress {
+			t.Fatalf("Expecting address %p but have %p", unsafe.Pointer(FixedAddress), unsafe.Pointer(a))
+		}
+	})
 
-	if runtime.GOOS == "aix" {
-		t.Skip("msync returns invalid argument for AIX, skipping msync test")
-	} else {
-		if err := posix.Msync(b, posix.MS_SYNC); err != nil {
+	t.Run("Mprotect", func(t *testing.T) {
+		if err = posix.Mprotect(b, posix.PROT_READ|posix.PROT_WRITE); err != nil {
+			t.Fatalf("Mprotect: %v", err)
+		}
+	})
+
+	t.Run("write", func(t *testing.T) {
+		b[0] = 42
+	})
+
+	t.Run("Msync", func(t *testing.T) {
+		if err = posix.Msync(b, posix.MS_SYNC); err != nil {
 			t.Fatalf("Msync: %v", err)
 		}
-	}
+	})
 
-	if err := posix.Madvise(b, posix.MADV_DONTNEED); err != nil {
-		t.Fatalf("Madvise: %v", err)
-	}
+	t.Run("Madvise", func(t *testing.T) {
+		if err = posix.Madvise(b, posix.MADV_DONTNEED); err != nil {
+			t.Fatalf("Madvise: %v", err)
+		}
+	})
 
-	if err := posix.Mlock(b, len(b)-1); err != nil {
-		t.Fatalf("Munlock: %v", err)
-	}
+	t.Run("Mlock", func(t *testing.T) {
+		if err := posix.Mlock(b, len(b)-1); err != nil {
+			t.Fatalf("Munlock: %v", err)
+		}
+	})
 
-	if err := posix.Mlockall(posix.MCL_CURRENT); err != nil {
-		t.Fatalf("Mlockall: %v", err)
-	}
+	t.Run("Munlock", func(t *testing.T) {
+		if err := posix.Munlock(b, len(b)-1); err != nil {
+			t.Fatalf("Munlock: %v", err)
+		}
+	})
 
-	if err := posix.Munlock(b, len(b)-1); err != nil {
-		t.Fatalf("Munlock: %v", err)
-	}
+	t.Run("Munlockall", func(t *testing.T) {
+		if err = posix.Munlockall(); err != nil {
+			if err.(posix.Errno) == syscall.ENOSYS {
+				t.Skip(err)
+				return
+			}
+			t.Errorf("Munlockall: %v", err)
+		}
+	})
 
-	if err := posix.Munlockall(); err != nil {
-		t.Fatalf("Munlockall: %v", err)
-	}
+	t.Run("Munlockall", func(t *testing.T) {
+		if err = posix.Mlockall(posix.MCL_CURRENT); err != nil {
+			if err.(posix.Errno) == syscall.ENOSYS {
+				t.Skip(err)
+				return
+			}
+			t.Errorf("Mlockall: %v", err)
+		}
+	})
 
 	if err := posix.Munmap(b); err != nil {
 		t.Fatalf("Munmap: %v", err)

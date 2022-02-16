@@ -1,6 +1,8 @@
 package posix
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 type Timespec struct {
 	Sec  int64
@@ -225,6 +227,9 @@ var libc_fstat64_trampoline_addr uintptr
 /* -------------------------------------------------------------------------------------------------------------------*/
 
 func fchown(fd int, uid int, gid int) (err error) {
+	if uid <= 0 && gid <= 0 {
+		return errnoErr(EINVAL)
+	}
 	_, _, e1 := syscall_syscall(libc_fchown_trampoline_addr, uintptr(fd), uintptr(uid), uintptr(gid))
 	if e1 != 0 {
 		err = errnoErr(e1)
@@ -252,19 +257,28 @@ var libc_fchmod_trampoline_addr uintptr
 
 /* -------------------------------------------------------------------------------------------------------------------*/
 
+func msync(b []byte, flags int) (err error) {
+	var _p0 unsafe.Pointer
+	if len(b) > 0 {
+		_p0 = unsafe.Pointer(&b[0])
+	} else {
+		_p0 = unsafe.Pointer(&_zero)
+	}
+	_, _, e1 := syscall_syscall(libc_msync_trampoline_addr, uintptr(_p0), uintptr(len(b)), uintptr(flags))
+	if e1 != 0 {
+		err = errnoErr(e1)
+	}
+	return
+}
+
+var libc_msync_trampoline_addr uintptr
+
+//go:cgo_import_dynamic libc_msync msync "/usr/lib/libSystem.B.dylib"
+
+/* -------------------------------------------------------------------------------------------------------------------*/
 // Implemented in the runtime package (runtime/sys_darwin.go)
 func syscall_syscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
 func syscall_syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
-func syscall_syscall6X(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
-func syscall_syscall9(fn, a1, a2, a3, a4, a5, a6, a7, a8, a9 uintptr) (r1, r2 uintptr, err Errno) // 32-bit only
-func syscall_rawSyscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
-func syscall_rawSyscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
-func syscall_syscallPtr(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
 
 //go:linkname syscall_syscall syscall.syscall
 //go:linkname syscall_syscall6 syscall.syscall6
-//go:linkname syscall_syscall6X syscall.syscall6X
-//go:linkname syscall_syscall9 syscall.syscall9
-//go:linkname syscall_rawSyscall syscall.rawSyscall
-//go:linkname syscall_rawSyscall6 syscall.rawSyscall6
-//go:linkname syscall_syscallPtr syscall.syscallPtr

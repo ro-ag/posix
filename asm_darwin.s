@@ -96,3 +96,10 @@ TEXT libc_fstat64_trampoline<>(SB),NOSPLIT,$0-0
 
 GLOBL	·libc_fstat64_trampoline_addr(SB), RODATA, $8
 DATA	·libc_fstat64_trampoline_addr(SB)/8, $libc_fstat64_trampoline<>(SB)
+
+TEXT libc_fchown_trampoline<>(SB),NOSPLIT,$0-0
+	JMP	libc_fchown(SB)
+
+GLOBL	·libc_fchown_trampoline_addr(SB), RODATA, $8
+DATA	·libc_fchown_trampoline_addr(SB)/8, $libc_fchown_trampoline<>(SB)
+
