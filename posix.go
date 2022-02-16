@@ -33,8 +33,8 @@ func Madvise(b []byte, behav int) error {
 //Map the shared memory object into the virtual address
 //space of the calling process.
 //MmapAt has the same parameters as the C mmap implementation where the address is exposed.
-func Mmap(address unsafe.Pointer, length int, prot accFlags, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
-	return mapper.Mmap(address, uintptr(length), int(prot), flags, fd, offset)
+func Mmap(address unsafe.Pointer, length int, prot int, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
+	return mapper.Mmap(address, uintptr(length), prot, flags, fd, offset)
 }
 
 //Munmap
@@ -49,8 +49,8 @@ func Munmap(b []byte) error {
 //process's memory pages containing any part of the address range
 //in the interval [addr, addr+len-1].  addr must be aligned to a
 //page boundary.
-func Mprotect(b []byte, prot accFlags) error {
-	return mprotect(b, int(prot))
+func Mprotect(b []byte, prot int) error {
+	return mprotect(b, prot)
 }
 
 //Mlock

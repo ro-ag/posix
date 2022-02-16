@@ -1,5 +1,8 @@
 package posix
 
+import "syscall"
+
+//goland:noinspection GoSnakeCaseUsage
 const (
 	MADV_HUGEPAGE    = syscall.MADV_HUGEPAGE
 	MADV_HWPOISON    = syscall.MADV_HWPOISON
