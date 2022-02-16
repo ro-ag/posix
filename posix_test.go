@@ -2,7 +2,7 @@ package posix_test
 
 import (
 	"fmt"
-	"github.com/ro-ag/posix"
+	"gopkg.in/ro-ag/posix.v0"
 	"io/ioutil"
 	"os"
 	"runtime"

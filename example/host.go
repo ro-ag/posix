@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"github.com/ro-ag/posix"
+	"gopkg.in/ro-ag/posix.v0"
 	"log"
 	"unsafe"
 )
