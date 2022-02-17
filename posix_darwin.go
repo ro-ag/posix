@@ -169,7 +169,7 @@ var libc_munmap_trampoline_addr uintptr
 //go:cgo_import_dynamic libc_munmap munmap "/usr/lib/libSystem.B.dylib"
 
 /* -------------------------------------------------------------------------------------------------------------------*/
-func closeFd(fd int) (err error) {
+func fclose(fd int) (err error) {
 	_, _, e1 := syscall_syscall(libc_close_trampoline_addr, uintptr(fd), 0, 0)
 	if e1 != 0 {
 		err = errnoErr(e1)

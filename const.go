@@ -1,3 +1,6 @@
+//go:build darwin || linux
+// +build darwin linux
+
 package posix
 
 import (
@@ -27,6 +30,7 @@ const (
 	PROT_READ  = syscall.PROT_READ  // The memory can be read.
 	PROT_WRITE = syscall.PROT_WRITE // The memory can be modified.
 	PROT_EXEC  = syscall.PROT_EXEC  // The memory can be executed.
+	PROT_RDWR  = PROT_READ | PROT_WRITE
 )
 
 /*

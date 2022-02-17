@@ -6,37 +6,83 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
-	"time"
 	"unsafe"
 )
 
-type file struct {
-	fd    int
-	name  string
-	seals bool
+type fileTable struct {
+	Fd     int
+	Name   string
+	Unique string
+	Seals  bool
 }
 
-type mfd struct {
+type shmTable struct {
 	sync.Mutex
-	active map[string]file
+	MapName   map[string]int
+	MapActive map[int]fileTable
 }
 
-var _mfd = &mfd{
-	active: make(map[string]file),
+var shm = &shmTable{
+	MapName:   make(map[string]int),
+	MapActive: make(map[int]fileTable),
 }
+
+/* -------------------------------------------------------------------------------------------------------------------*/
+
+func closeFd(fd int) error {
+	return shm.Close(fd)
+}
+
+func (m *shmTable) Close(fd int) error {
+	m.Lock()
+	defer m.Unlock()
+	if f, ok := m.MapActive[fd]; ok {
+		delete(m.MapName, f.Unique)
+		delete(m.MapActive, fd)
+	}
+	return fclose(fd)
+}
+
+/* -------------------------------------------------------------------------------------------------------------------*/
 
 func memfdCreate(name string, flags int) (fd int, err error) {
-	return _mfd.MemfdCreate(name, flags)
+	return shm.MemfdCreate(name, flags)
 }
 
 var rgxFm = regexp.MustCompile(`^memfd:(\d{3}):(.+)`)
 
 /* -------------------------------------------------------------------------------------------------------------------*/
 
-func (m *mfd) MemfdCreate(name string, flags int) (fd int, err error) {
+func (m *shmTable) NewName(name *string) error {
+	// check if MapName exists
+	if name == nil {
+		return errnoErr(EFAULT)
+	}
+	unique := fmt.Sprintf(_MFD_NAME_PREFIX, 0, *name)
+	for {
+		if _, ok := m.MapName[unique]; ok {
+			if o := rgxFm.FindSubmatch([]byte(unique)); o != nil {
+				ind, _ := strconv.Atoi(string(o[1]))
+				if ind == 999 {
+					return EFAULT
+				} else {
+					unique = fmt.Sprintf(_MFD_NAME_PREFIX, ind+1, *name)
+				}
+			} else {
+				return EFAULT
+			}
+		} else {
+			break
+		}
+	}
+	*name = unique
+	return nil
+}
+
+func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
 	m.Lock()
 	defer m.Unlock()
-	var f file
+	var f fileTable
 	fd = -1
 	if flags&MFD_HUGETLB == 0 {
 		if flags & ^_MFD_ALL_FLAGS != 0 {
@@ -49,63 +95,55 @@ func (m *mfd) MemfdCreate(name string, flags int) (fd int, err error) {
 		}
 	}
 	/* length includes terminating zero */
-	name_len := len(name)
-	if name_len <= 0 {
+	nameLen := len(name)
+	if nameLen <= 0 {
 		return fd, EFAULT
 	}
-	if name_len > _MFD_NAME_MAX_LEN {
+	if nameLen > _MFD_NAME_MAX_LEN {
 		return fd, EINVAL
 	}
 
-	uniName := fmt.Sprintf(_MFD_NAME_PREFIX, 0, name)
+	uniName := name
 
-	// check if name exists
-	for {
-		if _, ok := m.active[uniName]; ok {
-			if o := rgxFm.FindSubmatch([]byte(uniName)); o != nil {
-				ind, _ := strconv.Atoi(string(o[1]))
-				if ind == 999 {
-					return fd, EFAULT
-				} else {
-					uniName = fmt.Sprintf(_MFD_NAME_PREFIX, ind+1, name)
-				}
-			} else {
-				return fd, EFAULT
-			}
-		} else {
-			break
-		}
+	if err = m.NewName(&uniName); err != nil {
+		return
 	}
 
 	if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR|S_IRGRP); err != nil {
 		return
+	} else if _, ok := m.MapActive[fd]; ok {
+		err = EFAULT
+		goto closeAll
 	}
 
 	/* Delete shmName but keep the file descriptor */
 	if err = shmUnlink(uniName); err != nil {
-		goto closeall
+		goto closeAll
 	}
 
 	if flags&MFD_CLOEXEC == 0 {
 		/* Remove Flag FD_CLOEXEC which deletes the file if it needs to be passed to another process */
 		if err = remCloseOnExec(fd); err != nil {
-			goto closeall
+			goto closeAll
 		}
 	}
 
 	if flags&MFD_ALLOW_SEALING != 0 {
-		f.seals = true
+		f.Seals = true
 	}
-	f.name = name
-	f.fd = fd
-	m.active[uniName] = f
+	f.Name = name
+	f.Unique = uniName
+	f.Fd = fd
+	m.MapName[uniName] = fd
+	m.MapActive[fd] = f
 	return
-closeall:
+closeAll:
 	_ = Close(fd)
 	fd = -1
 	return
 }
 
+//goland:noinspection GoSnakeCaseUsage
 const (
 	_MFD_NAME_PREFIX           = "memfd:%03d:%s"
 	_MFD_NAME_PREFIX_LEN       = 10
@@ -119,23 +157,45 @@ const (
 
 /* -------------------------------------------------------------------------------------------------------------------*/
 
-func ShmAnonymous(name string) (fd int, err error) {
+func ShmAnonymous() (int, error) {
+	return shm.ShmAnonymous()
+}
 
-	uniName := fmt.Sprintf("%s-%d", name, time.Now().Nanosecond())
+func (m *shmTable) ShmAnonymous() (fd int, err error) {
+	m.Lock()
+	defer m.Unlock()
+	var f fileTable
+	fd = -1
+
+	name := "shm_anon"
+	uniName := name
+	if err = m.NewName(&uniName); err != nil {
+		return
+	}
+
 	if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR); err != nil {
 		return
 	}
 
 	/* Delete shmName but keep the file descriptor */
 	if err = shmUnlink(uniName); err != nil {
-		return
+		goto closeAll
 	}
 
 	/* Remove Flag FD_CLOEXEC which deletes the file if it needs to be passed to another process */
 	if err = remCloseOnExec(fd); err != nil {
-		_ = Close(fd)
-		return -1, err
+		goto closeAll
 	}
+
+	f.Name = name
+	f.Unique = uniName
+	f.Fd = fd
+	m.MapName[uniName] = fd
+	m.MapActive[fd] = f
+	return
+closeAll:
+	_ = Close(fd)
+	fd = -1
 	return
 }
 

@@ -1,3 +1,6 @@
+//go:build darwin || linux
+// +build darwin linux
+
 package posix
 
 import (
@@ -152,7 +155,7 @@ func Getpagesize() int {
 //volatile backing storage.  Once all references to the file are
 //dropped, it is automatically released.
 //
-//NOTE: this is an Emulation of the original function in Linux
+//NOTE: MacOSx is an Emulation of the original function in Linux
 //      is made for testing only
 func MemfdCreate(name string, flags int) (fd int, err error) {
 	return memfdCreate(name, flags)

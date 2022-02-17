@@ -68,7 +68,7 @@ func unlinkat(dirfd int, path string, flags int) (err error) {
 
 //goland:noinspection GoSnakeCaseUsage
 const (
-	prefix        = "/dev/shm/"
+	prefix        = "/dev/shmTable/"
 	_SYS_OPENAT   = 257
 	_SYS_UNLINKAT = 263
 	_AT_FDCWD     = -0x64
