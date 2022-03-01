@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
@@ -105,26 +106,40 @@ func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
 
 	uniName := name
 
-	if err = m.NewName(&uniName); err != nil {
+	s := time.Now().UnixNano() / int64(time.Millisecond)
+	t := s + int64(time.Millisecond)
+
+	for i := s; i < t; i = time.Now().UnixNano() / int64(time.Millisecond) {
+		if err = m.NewName(&uniName); err != nil {
+			return
+		}
+		if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR|S_IRGRP); err != nil {
+			if err != syscall.EEXIST {
+				return
+			}
+		} else {
+			break
+		}
+	}
+
+	if err != nil {
 		return
 	}
 
-	if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR|S_IRGRP); err != nil {
-		return
-	} else if _, ok := m.MapActive[fd]; ok {
+	if _, ok := m.MapActive[fd]; ok {
 		err = EFAULT
-		goto closeAll
+		goto unlinking
 	}
 
 	/* Delete shmName but keep the file descriptor */
 	if err = shmUnlink(uniName); err != nil {
-		goto closeAll
+		goto closing
 	}
 
 	if flags&MFD_CLOEXEC == 0 {
 		/* Remove Flag FD_CLOEXEC which deletes the file if it needs to be passed to another process */
 		if err = remCloseOnExec(fd); err != nil {
-			goto closeAll
+			goto closing
 		}
 	}
 
@@ -137,7 +152,9 @@ func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
 	m.MapName[uniName] = fd
 	m.MapActive[fd] = f
 	return
-closeAll:
+unlinking:
+	_ = shmUnlink(uniName)
+closing:
 	_ = Close(fd)
 	fd = -1
 	return
@@ -169,22 +186,41 @@ func (m *shmTable) ShmAnonymous() (fd int, err error) {
 
 	name := "shm_anon"
 	uniName := name
-	if err = m.NewName(&uniName); err != nil {
+
+	s := time.Now().UnixNano() / int64(time.Millisecond)
+	t := s + int64(time.Millisecond)
+
+	for i := s; i < t; i = time.Now().UnixNano() / int64(time.Millisecond) {
+		if err = m.NewName(&uniName); err != nil {
+			return
+		}
+
+		if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR); err != nil {
+			if err != syscall.EEXIST {
+				return
+			}
+		} else {
+			break
+		}
+	}
+
+	if err != nil {
 		return
 	}
 
-	if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR); err != nil {
-		return
+	if _, ok := m.MapActive[fd]; ok {
+		err = EFAULT
+		goto unlinking
 	}
 
 	/* Delete shmName but keep the file descriptor */
 	if err = shmUnlink(uniName); err != nil {
-		goto closeAll
+		goto closing
 	}
 
 	/* Remove Flag FD_CLOEXEC which deletes the file if it needs to be passed to another process */
 	if err = remCloseOnExec(fd); err != nil {
-		goto closeAll
+		goto closing
 	}
 
 	f.Name = name
@@ -193,7 +229,9 @@ func (m *shmTable) ShmAnonymous() (fd int, err error) {
 	m.MapName[uniName] = fd
 	m.MapActive[fd] = f
 	return
-closeAll:
+unlinking:
+	_ = shmUnlink(uniName)
+closing:
 	_ = Close(fd)
 	fd = -1
 	return

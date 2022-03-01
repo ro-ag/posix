@@ -1,9 +1,11 @@
 package posix_test
 
 import (
+	"fmt"
 	"gopkg.in/ro-ag/posix.v1"
 	"log"
 	"runtime/debug"
+	"syscall"
 	"testing"
 	"unsafe"
 )
@@ -31,6 +33,25 @@ func TestShmAnonymous(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMemfdCreateParallel(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		name := fmt.Sprintf("name-%.3d", i)
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			fd, err := posix.MemfdCreate("name"+
+				""+
+				"", posix.MFD_ALLOW_SEALING)
+			if err != nil {
+				t.Errorf("MemfdCreate() error = %v %s", err, posix.ErrnoName(err.(syscall.Errno)))
+				return
+			} else {
+				log.Println("Got ", fd)
+			}
+		})
+	}
+
 }
 
 func TestMemfdCreate(t *testing.T) {
@@ -70,7 +91,7 @@ func TestMprotect(t *testing.T) {
 	}()
 	protect := func(flags int) {
 		if err = posix.Mprotect(buf, flags); err != nil {
-			t.Log(unix.ErrnoName(err.(posix.Errno)))
+			t.Log(posix.ErrnoName(err.(posix.Errno)))
 			t.Errorf("Mprotect() error = %v", err)
 			return
 		}
