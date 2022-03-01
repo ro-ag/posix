@@ -5,7 +5,7 @@ package posix_test
 
 import (
 	"fmt"
-	"gopkg.in/ro-ag/posix.v0"
+	"gopkg.in/ro-ag/posix.v1"
 	"io/ioutil"
 	"os"
 	"runtime"

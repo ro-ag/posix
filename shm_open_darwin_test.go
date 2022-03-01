@@ -1,8 +1,7 @@
 package posix_test
 
 import (
-	"golang.org/x/sys/unix"
-	"gopkg.in/ro-ag/posix.v0"
+	"gopkg.in/ro-ag/posix.v1"
 	"log"
 	"runtime/debug"
 	"testing"
@@ -120,7 +119,7 @@ func TestMprotect(t *testing.T) {
 
 	t.Run("mmap", func(t *testing.T) {
 		if buf, _, err = posix.Mmap(unsafe.Pointer(uintptr(0)), posix.Getpagesize(), posix.PROT_NONE, posix.MAP_ANON|posix.MAP_PRIVATE, 0, 0); err != nil {
-			t.Log(unix.ErrnoName(err.(posix.Errno)))
+			t.Log(posix.ErrnoName(err.(posix.Errno)))
 			t.Errorf("Mmap() error = %v", err)
 			return
 		}

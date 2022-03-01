@@ -6,7 +6,7 @@ memory API allows processes to communicate information by sharing a region of me
 Golang doesn't have shm_open implementation and Mmap is not exposing the address parameter, needed for cross programming
 maps.
 
-* Package Documentation https://pkg.go.dev/gopkg.in/ro-ag/posix.v0
+* Package Documentation https://pkg.go.dev/gopkg.in/ro-ag/posix.v1
 
 > I highly recommend to use **golang.org/x/sys** (which this code is base from) if you don't require mmap with fixed memory address or shm_open function.
 
@@ -52,7 +52,7 @@ package main
 
 import (
   "fmt"
-  "gopkg.in/ro-ag/posix.v0"
+  "gopkg.in/ro-ag/posix.v1"
   "log"
   "syscall"
   "unsafe"

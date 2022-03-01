@@ -1,7 +1,7 @@
 package main
 
 import (
-	"gopkg.in/ro-ag/posix.v0"
+	"gopkg.in/ro-ag/posix.v1"
 	"log"
 	"os"
 	"os/exec"
