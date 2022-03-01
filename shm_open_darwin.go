@@ -37,6 +37,10 @@ func closeFd(fd int) error {
 func (m *shmTable) Close(fd int) error {
 	m.Lock()
 	defer m.Unlock()
+	return m.Remove(fd)
+}
+
+func (m shmTable) Remove(fd int) error {
 	if f, ok := m.MapActive[fd]; ok {
 		delete(m.MapName, f.Unique)
 		delete(m.MapActive, fd)
@@ -155,7 +159,7 @@ func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
 unlinking:
 	_ = shmUnlink(uniName)
 closing:
-	_ = Close(fd)
+	_ = m.Remove(fd)
 	fd = -1
 	return
 }
@@ -232,7 +236,7 @@ func (m *shmTable) ShmAnonymous() (fd int, err error) {
 unlinking:
 	_ = shmUnlink(uniName)
 closing:
-	_ = Close(fd)
+	_ = m.Remove(fd)
 	fd = -1
 	return
 }
