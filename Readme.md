@@ -6,13 +6,14 @@ memory API allows processes to communicate information by sharing a region of me
 Golang doesn't have shm_open implementation and Mmap is not exposing the address parameter, needed for cross programming
 maps.
 
-> I highly recommend to use **golang.org/x/sys** (which this code is base from) if you don't require mmap with
-fixed memory address or shm_open function.
+* Package Documentation https://pkg.go.dev/gopkg.in/ro-ag/posix.v0
+
+> I highly recommend to use **golang.org/x/sys** (which this code is base from) if you don't require mmap with fixed memory address or shm_open function.
 
 According to the Linux manual this package contains the following functions.
 
 - **ShmOpen** Create and open a new object, or open an existing object. The call returns a file descriptor for use by
-  the other interfaces listed below.   
+  the other interfaces listed below.
 
 
 - **Ftruncate** Set the size of the shared memory object.  (A newly created shared memory object has a length of zero.)
@@ -41,3 +42,80 @@ According to the Linux manual this package contains the following functions.
 
 
 - **MemfdCreate** This function is available since Linux 3.17, basically creates an anonymous memory file descriptor.
+
+## Example
+
+> host
+
+```go
+package main
+
+import (
+  "fmt"
+  "gopkg.in/ro-ag/posix.v0"
+  "log"
+  "syscall"
+  "unsafe"
+)
+
+const AppAddress uintptr = 0x20000000000 // Approximated Address 
+
+type Head struct {
+  Addr     unsafe.Pointer
+  MemSize  uintptr
+  TextSize uintptr
+  TextPtr  unsafe.Pointer
+}
+
+type Holder struct {
+  *Head
+  Data []byte
+}
+
+func main() {
+  // Create File Descriptor	
+  fd, err := posix.MemfdCreate("From-Main", posix.MFD_ALLOW_SEALING)
+  CheckErr(err)
+  // Truncate File max len
+  MemSize := posix.Getpagesize() * 4
+  err = posix.Ftruncate(fd, MemSize)
+  CheckErr(err)
+
+  // mmap returns the map address from system call, 
+  // because is not MAP_FIXED will return the closest memory if the address segment is used
+
+  buf, addr, err := posix.Mmap(unsafe.Pointer(AppAddress), MemSize, posix.PROT_WRITE, posix.MAP_SHARED, fd, 0)
+  CheckErr(err)
+
+  text := "This works as Mmap in C"
+  offset := unsafe.Sizeof(Head{})
+
+  // Unsafe Structure, Easy for writing pointers
+  hdr := (*Head)(unsafe.Pointer(&buf[0]))
+  hdr.Addr = unsafe.Pointer(addr)
+  hdr.MemSize = uintptr(MemSize)
+  hdr.TextSize = uintptr(len(text))
+  hdr.TextPtr = unsafe.Pointer(&buf[offset])
+
+  holder := &Holder{
+    Head: hdr,
+    Data: unsafe.Slice(&buf[offset], uintptr(len(text))),
+  }
+
+  fmt.Println(holder)
+
+  // Detailed code under ./example folder 
+
+  CheckErr(posix.Munmap(buf)) // unmap memory
+  CheckErr(posix.Close(fd))   // close anonymous file
+
+}
+
+// CheckErr wraps around error
+func CheckErr(err error) {
+  if err != nil {
+    no := err.(syscall.Errno)
+    log.Fatalf("%s(%d): %v, msg: %s\nhelp: %s", posix.ErrnoName(no), no, err, posix.ErrnoString(no), posix.ErrnoHelp(no))
+  }
+}
+```

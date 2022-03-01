@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"syscall"
 	"testing"
+	"time"
 	"unsafe"
 )
 
@@ -189,6 +190,31 @@ func TestFcntl(t *testing.T) {
 
 const FixedAddress uintptr = 0x20000000000
 
+func TestMmapParallel(t *testing.T) {
+	for i := 0; i < 50; i++ {
+		name := fmt.Sprintf("mmap-%.3d", i)
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			b, a, err := posix.Mmap(unsafe.Pointer(FixedAddress), posix.Getpagesize()*500, posix.PROT_WRITE, posix.MAP_ANON|posix.MAP_SHARED, 0, 0)
+			if err != nil {
+				t.Errorf("Mmap: %v", err)
+				return
+			}
+			if err = posix.Mlock(b, len(b)-1); err != nil {
+				t.Errorf("Mlock: %v", err)
+				return
+			}
+			t.Logf("name: %s, orig: %p, addr: %p, diff: %p", name, unsafe.Pointer(FixedAddress), unsafe.Pointer(a), unsafe.Pointer(a-FixedAddress))
+			time.Sleep(50 * time.Microsecond)
+			copy(b, name)
+			if err = posix.Munmap(b); err != nil {
+				t.Errorf("Munmap: %v", err)
+			}
+		})
+
+	}
+}
+
 func TestMemory(t *testing.T) {
 	var (
 		b   []byte
@@ -250,13 +276,17 @@ func TestMemory(t *testing.T) {
 		}
 	})
 
-	t.Run("Munlockall", func(t *testing.T) {
+	t.Run("Mlockall", func(t *testing.T) {
 		if err = posix.Mlockall(posix.MCL_CURRENT); err != nil {
-			if err.(posix.Errno) == syscall.ENOSYS {
+			enum := err.(posix.Errno)
+			if enum == syscall.ENOSYS {
 				t.Skip(err)
 				return
+			} else if enum == syscall.ENOMEM {
+				t.Skip(posix.ErrnoName(enum), posix.ErrnoString(enum), posix.ErrnoHelp(enum))
 			}
-			t.Errorf("Mlockall: %v", err)
+
+			t.Errorf("Mlockall: %v - No: %d - %s", err, enum, posix.ErrnoName(enum))
 		}
 	})
 
