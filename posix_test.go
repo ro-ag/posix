@@ -344,7 +344,7 @@ func TestStress(t *testing.T) {
 	}
 
 	var err error
-	max := 256
+	max := 600
 	for x := 0; x < 10; x++ {
 		name := fmt.Sprintf("(%d) create and delete %.3d maps", x, max)
 		t.Run(name, func(t *testing.T) {
@@ -382,15 +382,6 @@ func TestStress(t *testing.T) {
 
 			t.Log("write from external program")
 
-			//for i := range segments {
-			//	s := segments[i]
-			//	if err = s.cmd.Run(); err != nil {
-			//		t.Error(err)
-			//	} else {
-			//		log.Println(" »»» ", s.stdout.String())
-			//		log.Println(" »»» ", s.stderr.String())
-			//	}
-			//}
 			var wg sync.WaitGroup
 			for i := range segments {
 				wg.Add(1)
@@ -418,11 +409,14 @@ func TestStress(t *testing.T) {
 			}
 
 			for i := range segments {
+				if err = posix.Munmap(segments[i].buf); err != nil {
+					t.Errorf("(%.3d) Munmap(%d): %v", i, segments[i].fd, err)
+					return
+				}
 				if err = posix.Close(segments[i].fd); err != nil {
 					t.Errorf("(%.3d) Close(%d): %v", i, segments[i].fd, err)
 					return
 				}
-
 			}
 		})
 	}
