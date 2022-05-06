@@ -1,14 +1,17 @@
 //go:build darwin || linux
-// +build darwin linux
 
 package posix_test
 
 import (
+	"bytes"
 	"fmt"
 	"gopkg.in/ro-ag/posix.v1"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"runtime"
+	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -64,7 +67,7 @@ func TestClose(t *testing.T) {
 		wantErr bool
 		reErr   bool
 	}{
-		{"normal", args{fd: 0}, true, false, true},
+		{"normal", args{fd: 0}, true, false, false},
 		{"failure", args{fd: 10}, false, true, true},
 	}
 	for _, tt := range tests {
@@ -316,4 +319,111 @@ func displayInfo(fd int, t *testing.T) {
 	}
 	fmt.Printf("Descriptor %d\n", fd)
 	fs.DisplayStatInfo()
+}
+
+func TestStress(t *testing.T) {
+	t.Log("build external test")
+	FileName := "./test/shm"
+	cmd := exec.Command("go", "build", "-o", FileName, "./test")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		t.Errorf("external test: %v", err)
+		return
+	}
+
+	type segment struct {
+		buf    []byte
+		addr   uintptr
+		fd     int
+		f      *os.File
+		cmd    *exec.Cmd
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+		err    error
+	}
+
+	var err error
+	max := 256
+	for x := 0; x < 10; x++ {
+		name := fmt.Sprintf("(%d) create and delete %.3d maps", x, max)
+		t.Run(name, func(t *testing.T) {
+			var segments []*segment
+			for i := 0; i < max; i++ {
+				seg := new(segment)
+				if seg.fd, err = posix.MemfdCreate("testing", posix.MFD_ALLOW_SEALING); err != nil {
+					t.Errorf("(%.3d) MemfdCreate: %v", i, err)
+					return
+				}
+
+				if err = posix.Ftruncate(seg.fd, 50); err != nil {
+					t.Errorf("(%.3d) Ftruncate fd=%d : %v", i, seg.fd, err)
+					return
+				}
+
+				seg.f = os.NewFile(uintptr(seg.fd), fmt.Sprintf("file-%d", seg.fd))
+
+				if seg.buf, seg.addr, err = posix.Mmap(unsafe.Pointer(uintptr(0)), 50, posix.PROT_READ|posix.PROT_WRITE, posix.MAP_SHARED, seg.fd, 0); err != nil {
+					t.Errorf("(%.3d) Mmap: %v", i, err)
+					return
+				}
+
+				seg.cmd = exec.Command(FileName)
+				seg.cmd.Stdout = &seg.stdout
+				seg.cmd.Stderr = &seg.stderr
+				seg.cmd.ExtraFiles = []*os.File{seg.f}
+
+				segments = append(segments, seg)
+
+				if err != nil {
+					return
+				}
+			}
+
+			t.Log("write from external program")
+
+			//for i := range segments {
+			//	s := segments[i]
+			//	if err = s.cmd.Run(); err != nil {
+			//		t.Error(err)
+			//	} else {
+			//		log.Println(" »»» ", s.stdout.String())
+			//		log.Println(" »»» ", s.stderr.String())
+			//	}
+			//}
+			var wg sync.WaitGroup
+			for i := range segments {
+				wg.Add(1)
+				go func(s *segment, id int) {
+					defer wg.Done()
+					if s.err = s.cmd.Run(); err != nil {
+						t.Error(s.err)
+						return
+					}
+				}(segments[i], i)
+			}
+
+			wg.Wait()
+			for i := range segments {
+				s := segments[i]
+				want := fmt.Sprintf("PID: %.10d", s.cmd.Process.Pid)
+				got := string(s.buf[:len(want)])
+				if got != want {
+					t.Errorf("(%d) Got %s but want %s", i, got, want)
+					return
+				}
+				if s.err != nil {
+					t.Errorf("(%d) stderr: %s - %v", i, strings.TrimSpace(s.stderr.String()), err)
+				}
+			}
+
+			for i := range segments {
+				if err = posix.Close(segments[i].fd); err != nil {
+					t.Errorf("(%.3d) Close(%d): %v", i, segments[i].fd, err)
+					return
+				}
+
+			}
+		})
+	}
 }

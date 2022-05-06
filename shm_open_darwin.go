@@ -1,9 +1,9 @@
 package posix
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
-	"regexp"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -40,10 +40,15 @@ func (m *shmTable) Close(fd int) error {
 	return m.Remove(fd)
 }
 
-func (m shmTable) Remove(fd int) error {
+func (m *shmTable) Remove(fd int) error {
 	if f, ok := m.MapActive[fd]; ok {
 		delete(m.MapName, f.Unique)
 		delete(m.MapActive, fd)
+		if err := ShmUnlink(f.Unique); err != nil {
+			return err
+		} else {
+			return nil
+		}
 	}
 	return fclose(fd)
 }
@@ -54,34 +59,26 @@ func memfdCreate(name string, flags int) (fd int, err error) {
 	return shm.MemfdCreate(name, flags)
 }
 
-var rgxFm = regexp.MustCompile(`^memfd:(\d{3}):(.+)`)
-
 /* -------------------------------------------------------------------------------------------------------------------*/
 
-func (m *shmTable) NewName(name *string) error {
+func (m *shmTable) NewName(name string) (string, error) {
 	// check if MapName exists
-	if name == nil {
-		return errnoErr(EFAULT)
+	if name == "" {
+		return "", errnoErr(EFAULT)
 	}
-	unique := fmt.Sprintf(_MFD_NAME_PREFIX, 0, *name)
+
+	unique := ""
 	for {
-		if _, ok := m.MapName[unique]; ok {
-			if o := rgxFm.FindSubmatch([]byte(unique)); o != nil {
-				ind, _ := strconv.Atoi(string(o[1]))
-				if ind == 999 {
-					return EFAULT
-				} else {
-					unique = fmt.Sprintf(_MFD_NAME_PREFIX, ind+1, *name)
-				}
-			} else {
-				return EFAULT
-			}
-		} else {
+		n := fmt.Sprintf("%d.%s", time.Now().UnixNano(), name)
+		x := md5.Sum([]byte(n))
+		s := hex.EncodeToString(x[:])
+		unique = _MFD_NAME_PREFIX + s[len(_MFD_NAME_PREFIX)+1:]
+		if _, ok := m.MapName[unique]; !ok {
 			break
 		}
 	}
-	*name = unique
-	return nil
+
+	return unique, nil
 }
 
 func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
@@ -108,22 +105,13 @@ func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
 		return fd, EINVAL
 	}
 
-	uniName := name
+	unique := ""
+	if unique, err = m.NewName(name); err != nil {
+		return
+	}
 
-	s := time.Now().UnixNano() / int64(time.Millisecond)
-	t := s + int64(time.Millisecond)
-
-	for i := s; i < t; i = time.Now().UnixNano() / int64(time.Millisecond) {
-		if err = m.NewName(&uniName); err != nil {
-			return
-		}
-		if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR|S_IRGRP); err != nil {
-			if err != syscall.EEXIST {
-				return
-			}
-		} else {
-			break
-		}
+	if fd, err = shmOpen(unique, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR|S_IRGRP); err != nil {
+		return -1, err
 	}
 
 	if err != nil {
@@ -135,11 +123,6 @@ func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
 		goto unlinking
 	}
 
-	/* Delete shmName but keep the file descriptor */
-	if err = shmUnlink(uniName); err != nil {
-		goto closing
-	}
-
 	if flags&MFD_CLOEXEC == 0 {
 		/* Remove Flag FD_CLOEXEC which deletes the file if it needs to be passed to another process */
 		if err = remCloseOnExec(fd); err != nil {
@@ -147,17 +130,22 @@ func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
 		}
 	}
 
+	/* Delete shmName but keep the file descriptor */
+	//if err = shmUnlink(unique); err != nil {
+	//	goto closing
+	//}
+
 	if flags&MFD_ALLOW_SEALING != 0 {
 		f.Seals = true
 	}
 	f.Name = name
-	f.Unique = uniName
+	f.Unique = unique
 	f.Fd = fd
-	m.MapName[uniName] = fd
+	m.MapName[unique] = fd
 	m.MapActive[fd] = f
 	return
 unlinking:
-	_ = shmUnlink(uniName)
+	_ = shmUnlink(unique)
 closing:
 	_ = m.Remove(fd)
 	fd = -1
@@ -166,7 +154,7 @@ closing:
 
 //goland:noinspection GoSnakeCaseUsage
 const (
-	_MFD_NAME_PREFIX           = "memfd:%03d:%s"
+	_MFD_NAME_PREFIX           = "memfd:"
 	_MFD_NAME_PREFIX_LEN       = 10
 	_MFD_NAME_MAX_LEN          = syscall.NAME_MAX - _MFD_NAME_PREFIX_LEN
 	_MFD_ALL_FLAGS             = MFD_CLOEXEC | MFD_ALLOW_SEALING | MFD_HUGETLB
@@ -189,22 +177,14 @@ func (m *shmTable) ShmAnonymous() (fd int, err error) {
 	fd = -1
 
 	name := "shm_anon"
-	uniName := name
+	unique := ""
+	if unique, err = m.NewName(name); err != nil {
+		return
+	}
 
-	s := time.Now().UnixNano() / int64(time.Millisecond)
-	t := s + int64(time.Millisecond)
-
-	for i := s; i < t; i = time.Now().UnixNano() / int64(time.Millisecond) {
-		if err = m.NewName(&uniName); err != nil {
+	if fd, err = shmOpen(unique, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR); err != nil {
+		if err != syscall.EEXIST {
 			return
-		}
-
-		if fd, err = shmOpen(uniName, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR); err != nil {
-			if err != syscall.EEXIST {
-				return
-			}
-		} else {
-			break
 		}
 	}
 
@@ -218,7 +198,7 @@ func (m *shmTable) ShmAnonymous() (fd int, err error) {
 	}
 
 	/* Delete shmName but keep the file descriptor */
-	if err = shmUnlink(uniName); err != nil {
+	if err = shmUnlink(unique); err != nil {
 		goto closing
 	}
 
@@ -228,13 +208,13 @@ func (m *shmTable) ShmAnonymous() (fd int, err error) {
 	}
 
 	f.Name = name
-	f.Unique = uniName
+	f.Unique = unique
 	f.Fd = fd
-	m.MapName[uniName] = fd
+	m.MapName[unique] = fd
 	m.MapActive[fd] = f
 	return
 unlinking:
-	_ = shmUnlink(uniName)
+	_ = shmUnlink(unique)
 closing:
 	_ = m.Remove(fd)
 	fd = -1
