@@ -5,12 +5,12 @@ package posix_test
 import (
 	"bytes"
 	"fmt"
+	_ "golang.org/x/sys/unix"
 	"gopkg.in/ro-ag/posix.v1"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -67,7 +67,7 @@ func TestClose(t *testing.T) {
 		wantErr bool
 		reErr   bool
 	}{
-		{"normal", args{fd: 0}, true, false, false},
+		{"normal", args{fd: 0}, true, false, true},
 		{"failure", args{fd: 10}, false, true, true},
 	}
 	for _, tt := range tests {
@@ -82,6 +82,7 @@ func TestClose(t *testing.T) {
 					tt.args.fd = fd
 				}
 			}
+
 			if err := posix.Close(tt.args.fd); (err != nil) != tt.wantErr {
 				t.Errorf("Close() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -338,6 +339,7 @@ func TestStress(t *testing.T) {
 		fd     int
 		f      *os.File
 		cmd    *exec.Cmd
+		pid    int
 		stdout bytes.Buffer
 		stderr bytes.Buffer
 		err    error
@@ -349,75 +351,148 @@ func TestStress(t *testing.T) {
 		name := fmt.Sprintf("(%d) create and delete %.3d maps", x, max)
 		t.Run(name, func(t *testing.T) {
 			var segments []*segment
+			hasError := false
+			var wg sync.WaitGroup
+
 			for i := 0; i < max; i++ {
 				seg := new(segment)
 				if seg.fd, err = posix.MemfdCreate("testing", posix.MFD_ALLOW_SEALING); err != nil {
 					t.Errorf("(%.3d) MemfdCreate: %v", i, err)
-					return
+					hasError = true
+					goto close
+				} else {
+					segments = append(segments, seg)
 				}
+			}
 
-				if err = posix.Ftruncate(seg.fd, 50); err != nil {
-					t.Errorf("(%.3d) Ftruncate fd=%d : %v", i, seg.fd, err)
-					return
+			for i, seg := range segments {
+				if seg.err = posix.Ftruncate(seg.fd, 50); seg.err != nil {
+					t.Errorf("(%.3d) Ftruncate fd=%d : %v", i, seg.fd, seg.err)
+					hasError = true
 				}
+			}
 
+			if hasError {
+				goto close
+			}
+
+			for i, seg := range segments {
 				seg.f = os.NewFile(uintptr(seg.fd), fmt.Sprintf("file-%d", seg.fd))
+				if seg.f == nil {
+					seg.err = fmt.Errorf("(%.3d) NewFile fd=%d is null, probably bad descriptior", i, seg.fd)
+					t.Error(seg.err)
+					hasError = true
+				}
+			}
 
+			if hasError {
+				goto close
+			}
+
+			for i, seg := range segments {
 				if seg.buf, seg.addr, err = posix.Mmap(unsafe.Pointer(uintptr(0)), 50, posix.PROT_READ|posix.PROT_WRITE, posix.MAP_SHARED, seg.fd, 0); err != nil {
 					t.Errorf("(%.3d) Mmap: %v", i, err)
-					return
+					hasError = true
 				}
+			}
 
+			if hasError {
+				goto unmap
+			}
+
+			for i, seg := range segments {
+				text := fmt.Sprintf("(%.3d)", i)
+				if copy(seg.buf, text) != len(text) {
+					seg.err = fmt.Errorf("(%.3d) NewFile fd=%d wrong number of bytes writen", i, seg.fd)
+					t.Error(seg.err)
+					hasError = true
+				}
+			}
+
+			for i := range segments {
+				seg := segments[i]
 				seg.cmd = exec.Command(FileName)
 				seg.cmd.Stdout = &seg.stdout
 				seg.cmd.Stderr = &seg.stderr
 				seg.cmd.ExtraFiles = []*os.File{seg.f}
-
-				segments = append(segments, seg)
-
-				if err != nil {
-					return
-				}
 			}
 
 			t.Log("write from external program")
 
-			var wg sync.WaitGroup
 			for i := range segments {
+				seg := segments[i]
 				wg.Add(1)
-				go func(s *segment, id int) {
+				go func() {
 					defer wg.Done()
-					if s.err = s.cmd.Run(); err != nil {
-						t.Error(s.err)
-						return
-					}
-				}(segments[i], i)
+					seg.err = seg.cmd.Run()
+				}()
 			}
 
 			wg.Wait()
-			for i := range segments {
-				s := segments[i]
-				want := fmt.Sprintf("PID: %.10d", s.cmd.Process.Pid)
-				got := string(s.buf[:len(want)])
-				if got != want {
-					t.Errorf("(%d) Got %s but want %s", i, got, want)
-					return
-				}
-				if s.err != nil {
-					t.Errorf("(%d) stderr: %s - %v", i, strings.TrimSpace(s.stderr.String()), err)
+
+			for i, seg := range segments {
+				if seg.err != nil {
+					t.Errorf("(%d) fd=%d: %v", i, seg.fd, seg.err)
+					hasError = true
+				} else {
+					seg.pid = seg.cmd.Process.Pid
 				}
 			}
 
-			for i := range segments {
-				if err = posix.Munmap(segments[i].buf); err != nil {
-					t.Errorf("(%.3d) Munmap(%d): %v", i, segments[i].fd, err)
-					return
-				}
-				if err = posix.Close(segments[i].fd); err != nil {
-					t.Errorf("(%.3d) Close(%d): %v", i, segments[i].fd, err)
-					return
+			if hasError {
+				goto unmap
+			}
+
+			t.Log("validate memory")
+			for i, seg := range segments {
+				if seg.err == nil {
+					want := fmt.Sprintf("PID: %.10d", seg.pid)
+					got := string(seg.buf[:len(want)])
+					if got != want {
+						fmt.Println(seg.buf)
+						fmt.Println(seg.stdout.String())
+						t.Errorf("(%d) fd=%d Got %s but want %s", i, seg.fd, got, want)
+						t.Fail()
+						hasError = true
+					}
+				} else {
+					t.Errorf("(%d) fd=%d %v", i, seg.fd, err)
+					hasError = true
 				}
 			}
+			t.Log("done memory validation")
+		unmap:
+			t.Log("unmmap")
+			for i, sg := range segments {
+				if err = posix.Munmap(sg.buf); err != nil {
+					t.Errorf("(%.3d) fd=%d Munmap(%p): %v", i, sg.fd, unsafe.Pointer(sg.addr), err)
+					t.Fail()
+				}
+			}
+		close:
+			t.Log("closing")
+
+			for i, sg := range segments {
+				if sg.fd > 3 {
+					if runtime.GOOS == "darwin" {
+						err = posix.Close(sg.fd)
+					} else {
+						err = sg.f.Close()
+					}
+					if err != nil {
+						t.Errorf("(%.3d) f=%p file Close(%d): %v", i, sg.f, sg.fd, err)
+						t.Fail()
+						return
+					}
+				}
+			}
+			t.Log("test done")
+			return
 		})
+
+		if err != nil {
+			t.Fail()
+			return
+		}
 	}
 }
