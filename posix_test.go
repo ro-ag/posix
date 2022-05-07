@@ -5,7 +5,6 @@ package posix_test
 import (
 	"bytes"
 	"fmt"
-	_ "golang.org/x/sys/unix"
 	"gopkg.in/ro-ag/posix.v1"
 	"io/ioutil"
 	"os"
@@ -359,6 +358,7 @@ func TestStress(t *testing.T) {
 				if seg.fd, err = posix.MemfdCreate("testing", posix.MFD_ALLOW_SEALING); err != nil {
 					t.Errorf("(%.3d) MemfdCreate: %v", i, err)
 					hasError = true
+					t.Fail()
 					goto close
 				} else {
 					segments = append(segments, seg)
@@ -474,11 +474,7 @@ func TestStress(t *testing.T) {
 
 			for i, sg := range segments {
 				if sg.fd > 3 {
-					if runtime.GOOS == "darwin" {
-						err = posix.Close(sg.fd)
-					} else {
-						err = sg.f.Close()
-					}
+					err = sg.f.Close()
 					if err != nil {
 						t.Errorf("(%.3d) f=%p file Close(%d): %v", i, sg.f, sg.fd, err)
 						t.Fail()

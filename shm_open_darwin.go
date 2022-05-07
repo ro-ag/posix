@@ -4,87 +4,24 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"sync"
 	"syscall"
 	"time"
 	"unsafe"
 )
 
-type fileTable struct {
-	Fd     int
-	Name   string
-	Unique string
-	Seals  bool
-}
-
-type shmTable struct {
-	sync.Mutex
-	MapName   map[string]int
-	MapActive map[int]fileTable
-}
-
-var shm = &shmTable{
-	MapName:   make(map[string]int),
-	MapActive: make(map[int]fileTable),
-}
-
 /* -------------------------------------------------------------------------------------------------------------------*/
 
-func closeFd(fd int) error {
-	return shm.Close(fd)
+func newName(name string) string {
+	unique := ""
+	n := fmt.Sprintf("%d.%s", time.Now().UnixNano(), name)
+	x := md5.Sum([]byte(n))
+	s := hex.EncodeToString(x[:])
+	unique = _MFD_NAME_PREFIX + s[len(_MFD_NAME_PREFIX)+1:]
+	return unique
 }
-
-func (m *shmTable) Close(fd int) error {
-	m.Lock()
-	defer m.Unlock()
-	return m.Remove(fd)
-}
-
-func (m *shmTable) Remove(fd int) error {
-	if f, ok := m.MapActive[fd]; ok {
-		delete(m.MapName, f.Unique)
-		delete(m.MapActive, fd)
-		if err := ShmUnlink(f.Unique); err != nil {
-			return err
-		} else {
-			return nil
-		}
-	}
-	return fclose(fd)
-}
-
-/* -------------------------------------------------------------------------------------------------------------------*/
 
 func memfdCreate(name string, flags int) (fd int, err error) {
-	return shm.MemfdCreate(name, flags)
-}
 
-/* -------------------------------------------------------------------------------------------------------------------*/
-
-func (m *shmTable) NewName(name string) (string, error) {
-	// check if MapName exists
-	if name == "" {
-		return "", errnoErr(EFAULT)
-	}
-
-	unique := ""
-	for {
-		n := fmt.Sprintf("%d.%s", time.Now().UnixNano(), name)
-		x := md5.Sum([]byte(n))
-		s := hex.EncodeToString(x[:])
-		unique = _MFD_NAME_PREFIX + s[len(_MFD_NAME_PREFIX)+1:]
-		if _, ok := m.MapName[unique]; !ok {
-			break
-		}
-	}
-
-	return unique, nil
-}
-
-func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
-	m.Lock()
-	defer m.Unlock()
-	var f fileTable
 	fd = -1
 	if flags&MFD_HUGETLB == 0 {
 		if flags & ^_MFD_ALL_FLAGS != 0 {
@@ -96,6 +33,7 @@ func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
 			return fd, EINVAL
 		}
 	}
+
 	/* length includes terminating zero */
 	nameLen := len(name)
 	if nameLen <= 0 {
@@ -105,49 +43,36 @@ func (m *shmTable) MemfdCreate(name string, flags int) (fd int, err error) {
 		return fd, EINVAL
 	}
 
-	unique := ""
-	if unique, err = m.NewName(name); err != nil {
-		return
-	}
-
-	if fd, err = shmOpen(unique, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR|S_IRGRP); err != nil {
-		return -1, err
-	}
-
-	if err != nil {
-		return
-	}
-
-	if _, ok := m.MapActive[fd]; ok {
-		err = EFAULT
-		goto unlinking
+	unique := newName(name)
+	for {
+		if fd, err = shmOpen(unique, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR|S_IRGRP); err != nil {
+			if err != syscall.EEXIST {
+				return -1, err
+			} else {
+				unique = newName(name)
+			}
+		} else {
+			break
+		}
 	}
 
 	if flags&MFD_CLOEXEC == 0 {
 		/* Remove Flag FD_CLOEXEC which deletes the file if it needs to be passed to another process */
 		if err = remCloseOnExec(fd); err != nil {
-			goto closing
+			goto unlinking
 		}
 	}
 
 	/* Delete shmName but keep the file descriptor */
-	//if err = shmUnlink(unique); err != nil {
-	//	goto closing
-	//}
-
-	if flags&MFD_ALLOW_SEALING != 0 {
-		f.Seals = true
+	if err = shmUnlink(unique); err != nil {
+		goto closing
 	}
-	f.Name = name
-	f.Unique = unique
-	f.Fd = fd
-	m.MapName[unique] = fd
-	m.MapActive[fd] = f
+
 	return
 unlinking:
 	_ = shmUnlink(unique)
 closing:
-	_ = m.Remove(fd)
+	_ = Close(fd)
 	fd = -1
 	return
 }
@@ -166,35 +91,26 @@ const (
 
 /* -------------------------------------------------------------------------------------------------------------------*/
 
-func ShmAnonymous() (int, error) {
-	return shm.ShmAnonymous()
-}
+func ShmAnonymous() (fd int, err error) {
 
-func (m *shmTable) ShmAnonymous() (fd int, err error) {
-	m.Lock()
-	defer m.Unlock()
-	var f fileTable
 	fd = -1
 
 	name := "shm_anon"
-	unique := ""
-	if unique, err = m.NewName(name); err != nil {
-		return
-	}
-
-	if fd, err = shmOpen(unique, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR); err != nil {
-		if err != syscall.EEXIST {
-			return
+	unique := newName(name)
+	for {
+		if fd, err = shmOpen(unique, O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW, S_IRUSR|S_IWUSR|S_IRGRP); err != nil {
+			if err != syscall.EEXIST {
+				return -1, err
+			} else {
+				unique = newName(name)
+			}
+		} else {
+			break
 		}
 	}
 
 	if err != nil {
 		return
-	}
-
-	if _, ok := m.MapActive[fd]; ok {
-		err = EFAULT
-		goto unlinking
 	}
 
 	/* Delete shmName but keep the file descriptor */
@@ -207,16 +123,9 @@ func (m *shmTable) ShmAnonymous() (fd int, err error) {
 		goto closing
 	}
 
-	f.Name = name
-	f.Unique = unique
-	f.Fd = fd
-	m.MapName[unique] = fd
-	m.MapActive[fd] = f
 	return
-unlinking:
-	_ = shmUnlink(unique)
 closing:
-	_ = m.Remove(fd)
+	Close(fd)
 	fd = -1
 	return
 }
