@@ -1,5 +1,4 @@
 //go:build darwin || linux
-// +build darwin linux
 
 // Package posix is a golang implementation for mmap, shm_open for MacOSx and Linux without CGO !
 // MacOSx has an emulation for memfd_create using shm_open.

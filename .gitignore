@@ -4,3 +4,4 @@ example/cmake-build-debug/*
 example/cmake-build-debug
 example/example
 example/child_exe
+test/shm
