@@ -128,9 +128,24 @@ CI runs the full suite — including the cross-process round trip and a runtime
 **Memory mapping:** `Mmap` (with `addr`), `Munmap`, `Mprotect`, `Msync`,
 `Madvise`, `Mlock`, `Munlock`, `Mlockall`, `Munlockall`, `Getpagesize`.
 
-`MemfdCreate` is native on Linux; on macOS it is emulated with `shm_open`
-(convenient for portable tests). Full reference on
-**[pkg.go.dev](https://pkg.go.dev/gopkg.in/ro-ag/posix.v1)**.
+**Sealing:** `AddSeals`, `Seals` (`F_SEAL_WRITE`, `F_SEAL_SHRINK`, `F_SEAL_GROW`, …).
+
+Full reference on **[pkg.go.dev](https://pkg.go.dev/gopkg.in/ro-ag/posix.v1)**.
+
+### Wrapper, with a thin macOS shim
+
+This package is a **wrapper** — direct bindings to the native syscalls (Linux)
+or libc (macOS), not a reimplementation. Two things macOS lacks are **emulated**,
+and the difference is stated honestly:
+
+- `MemfdCreate` — macOS has no `memfd_create`, so it's emulated with `shm_open` +
+  an immediate `shm_unlink`. The object's size rounds up to a page and can be set
+  only once.
+- **Sealing** (`AddSeals`) — kernel-enforced on Linux; macOS has no shm sealing,
+  so it's **advisory** (honored by this package's own `Mmap`/`Ftruncate`, not a
+  cross-process security boundary). For a hard read-only guarantee to a peer, use
+  Linux — or open the object `O_RDONLY`, which makes the kernel reject a
+  `PROT_WRITE` mapping on both platforms.
 
 > If you don't need a fixed mmap address or `shm_open`, prefer
 > [`golang.org/x/sys`](https://pkg.go.dev/golang.org/x/sys/unix) — this package's
