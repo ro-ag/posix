@@ -13,7 +13,7 @@ const ShmFile uintptr = 3
 func main() {
 	fmt.Println("»»» run from extern program")
 	f := os.NewFile(ShmFile, "external memory")
-	bts, addr, err := posix.Mmap(nil, posix.Getpagesize(), posix.PROT_WRITE|posix.PROT_WRITE, posix.MAP_SHARED, int(f.Fd()), 0)
+	bts, addr, err := posix.Mmap(nil, posix.Getpagesize(), posix.PROT_READ|posix.PROT_WRITE, posix.MAP_SHARED, int(f.Fd()), 0)
 	if err != nil {
 		log.Fatal("Mmap:", err)
 	}

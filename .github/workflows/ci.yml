@@ -1,0 +1,161 @@
+name: CI
+run-name: CI · ${{ github.event_name }} · ${{ github.head_ref || github.ref_name }}
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt', '.gitignore', '.github/dependabot.yml']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.txt', '.gitignore', '.github/dependabot.yml']
+  schedule:
+    # Weekly run so govulncheck re-evaluates against advisories that appear over
+    # time, even when nothing in the repo changed.
+    - cron: '0 6 * * 2' # Tuesdays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Collapse superseded runs: a new push to the same PR cancels the old run.
+  # Never cancel on main (or the weekly cron) so every such commit gets a full run.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # This package exists to build with the cgo toolchain disabled, so default it
+  # off everywhere. The race job re-enables it locally (the detector is a C
+  # runtime); that is the only exception.
+  CGO_ENABLED: "0"
+
+jobs:
+  lint:
+    name: lint (gofmt, vet, staticcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: stable
+
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::these files are not gofmt-clean:"; echo "$unformatted"; exit 1
+          fi
+          echo "gofmt: clean"
+
+      - name: go vet
+        # -unsafeptr=false: this package's whole job is converting between
+        # uintptr addresses and unsafe.Pointer for mmap/shm. The unsafeptr
+        # analyzer flags every one of those required conversions as a false
+        # positive, so it is the one analyzer we disable.
+        run: go vet -unsafeptr=false ./...
+
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck ./...
+
+  build:
+    name: build·no-cgo (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: stable
+
+      - name: Assert the tree is cgo-free
+        run: |
+          if grep -rEn '^[[:space:]]*import[[:space:]]+"C"' --include='*.go' .; then
+            echo '::error::found import "C" — this package must stay cgo-free'; exit 1
+          fi
+          echo 'no import "C": ok'
+
+      - name: go build (CGO_ENABLED=0)
+        run: go build ./...
+
+      - name: go test (CGO_ENABLED=0)
+        run: go test -short ./...
+
+  race:
+    name: test·race (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+    # The race detector ships as a C runtime, so this is the one job that needs
+    # cgo. It proves the code is data-race-free; the build job above owns the
+    # separate claim that the package builds cgo-free.
+    env:
+      CGO_ENABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: stable
+      - name: go test -race
+        run: go test -race -short ./...
+
+  min-go:
+    name: build·min-go (from go.mod)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Go (declared floor)
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod # honours the floor declared in go.mod
+      - name: go build
+        run: go build ./...
+      - name: go test
+        run: go test -short ./...
+
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: stable
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  # Single required status check for branch protection: aggregates every job so
+  # the protected-branch rule needs one stable context instead of a list of
+  # matrix names. Fails if any needed job failed or was cancelled; passes if all
+  # succeeded or were skipped (e.g. a docs-only, paths-ignored push).
+  ci-success:
+    name: CI Success
+    if: always()
+    needs: [lint, build, race, min-go, govulncheck]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all jobs passed
+        run: |
+          results='${{ join(needs.*.result, ',') }}'
+          echo "job results: $results"
+          case "$results" in
+            *failure*|*cancelled*) echo "::error::a required CI job did not pass"; exit 1 ;;
+            *) echo "all required jobs passed" ;;
+          esac

@@ -2,10 +2,7 @@
 
 package posix
 
-import (
-	"syscall"
-	"unsafe"
-)
+import "syscall"
 
 //goland:noinspection GoSnakeCaseUsage
 const (
@@ -13,6 +10,8 @@ const (
 	EAGAIN     = syscall.EAGAIN
 	ENOENT     = syscall.ENOENT
 	EFAULT     = syscall.EFAULT
+	EPERM      = syscall.EPERM
+	EBUSY      = syscall.EBUSY
 	O_RDWR     = syscall.O_RDWR     // open for reading and writing
 	O_CREAT    = syscall.O_CREAT    // create if nonexistent
 	O_EXCL     = syscall.O_EXCL     // error if already exists
@@ -78,7 +77,7 @@ const (
 	MFD_ALLOW_SEALING = 0x2
 	MFD_CLOEXEC       = 0x1
 	MFD_HUGETLB       = 0x4
-	MFD_HUGE_16GB     = -0x78000000
+	MFD_HUGE_16GB     = 0x88000000
 	MFD_HUGE_16MB     = 0x60000000
 	MFD_HUGE_1GB      = 0x78000000
 	MFD_HUGE_1MB      = 0x50000000
@@ -113,6 +112,7 @@ const (
 )
 
 // File Fcntl
+//
 //goland:noinspection GoSnakeCaseUsage
 const (
 	F_GETFD    = syscall.F_GETFD
@@ -141,10 +141,3 @@ func errnoErr(e syscall.Errno) error {
 }
 
 type Errno = syscall.Errno
-
-// _unsafeSlice is the runtime representation of a slice.
-type _unsafeSlice struct {
-	Data unsafe.Pointer
-	Len  int
-	Cap  int
-}

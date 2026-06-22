@@ -1,0 +1,9 @@
+posix
+Copyright 2022-2026 Rodrigo Agurto
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file for the full license text.
+
+This product includes low-level syscall and memory-mapping code derived from
+the Go project and golang.org/x/sys (Copyright 2009 The Go Authors), licensed
+under a BSD-style license. See the THIRD-PARTY-NOTICES.txt file for details.

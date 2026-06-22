@@ -227,9 +227,6 @@ var libc_fstat64_trampoline_addr uintptr
 /* -------------------------------------------------------------------------------------------------------------------*/
 
 func fchown(fd int, uid int, gid int) (err error) {
-	if uid <= 0 && gid <= 0 {
-		return errnoErr(EINVAL)
-	}
 	_, _, e1 := syscall_syscall(libc_fchown_trampoline_addr, uintptr(fd), uintptr(uid), uintptr(gid))
 	if e1 != 0 {
 		err = errnoErr(e1)

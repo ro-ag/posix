@@ -1,23 +1,30 @@
 package posix
 
 import (
-	"crypto/md5"
-	"encoding/hex"
+	"crypto/rand"
 	"fmt"
+	"sync/atomic"
 	"syscall"
-	"time"
 	"unsafe"
 )
 
 /* -------------------------------------------------------------------------------------------------------------------*/
 
-func newName(name string) string {
-	unique := ""
-	n := fmt.Sprintf("%d.%s", time.Now().UnixNano(), name)
-	x := md5.Sum([]byte(n))
-	s := hex.EncodeToString(x[:])
-	unique = _MFD_NAME_PREFIX + s[len(_MFD_NAME_PREFIX)+1:]
-	return unique
+// nameCounter makes generated object names unique even if two concurrent
+// callers happen to read identical random bytes.
+var nameCounter atomic.Uint64
+
+// newName returns a process-unique macOS shared-memory object name that fits in
+// the platform name-length limit. It mixes crypto/rand entropy with a global
+// counter, so concurrent callers never collide and uniqueness does not depend on
+// wall-clock resolution (the previous time-based scheme produced frequent
+// duplicates under load). The caller's base name is only length-validated by
+// memfdCreate; the emulated object is unlinked immediately, so its on-disk name
+// is irrelevant.
+func newName(string) string {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	return fmt.Sprintf("%s%x%08x", _MFD_NAME_PREFIX, b[:], uint32(nameCounter.Add(1)))
 }
 
 func memfdCreate(name string, flags int) (fd int, err error) {
@@ -84,13 +91,17 @@ const (
 	_MFD_NAME_MAX_LEN          = syscall.NAME_MAX - _MFD_NAME_PREFIX_LEN
 	_MFD_ALL_FLAGS             = MFD_CLOEXEC | MFD_ALLOW_SEALING | MFD_HUGETLB
 	_HUGETLB_FLAG_ENCODE_SHIFT = 26
-	_HUGETLB_FLAG_ENCODE_MASK  = 0x3
+	_HUGETLB_FLAG_ENCODE_MASK  = 0x3f
 	_MFD_HUGE_SHIFT            = _HUGETLB_FLAG_ENCODE_SHIFT
 	_MFD_HUGE_MASK             = _HUGETLB_FLAG_ENCODE_MASK
 )
 
 /* -------------------------------------------------------------------------------------------------------------------*/
 
+// ShmAnonymous creates an anonymous shared-memory object and returns a file
+// descriptor for it. It is the macOS analogue of MemfdCreate: the object is
+// created, unlinked immediately, and has FD_CLOEXEC cleared so the descriptor
+// can be inherited across exec. Available on macOS only.
 func ShmAnonymous() (fd int, err error) {
 
 	fd = -1
@@ -131,17 +142,19 @@ closing:
 }
 
 /* -------------------------------------------------------------------------------------------------------------------*/
+// remCloseOnExec clears the FD_CLOEXEC flag on fd so the descriptor survives
+// exec. It does not close fd on failure; the caller owns fd's lifecycle (every
+// caller already closes fd on its error path, so closing here would double-close
+// and risk closing an unrelated descriptor that reused the number).
 func remCloseOnExec(fd int) (err error) {
 	var arg int
 	if arg, err = Fcntl(fd, F_GETFD, 0); err != nil {
-		_ = Close(fd)
 		return
 	}
 
 	arg &^= FD_CLOEXEC // Clear the close-on-exec flag.
 
-	if arg, err = Fcntl(fd, F_SETFD, arg); err != nil {
-		_ = Close(fd)
+	if _, err = Fcntl(fd, F_SETFD, arg); err != nil {
 		return
 	}
 	return

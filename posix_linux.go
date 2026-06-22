@@ -179,25 +179,6 @@ type Timespec struct {
 type ModeT uint32
 type DevT uint64
 
-//goland:noinspection GoSnakeCaseUsage
-type Stat_t struct {
-	Dev     DevT
-	Ino     uint64
-	Nlink   uint64
-	Mode    ModeT
-	Uid     uint32
-	Gid     uint32
-	_       int32
-	Rdev    DevT
-	Size    int64
-	Blksize int64
-	Blocks  int64
-	Atim    Timespec
-	Mtim    Timespec
-	Ctim    Timespec
-	_       [3]int64
-}
-
 /*--------------------------------------------------------------------------------------------------------------------*/
 func fchmod(fd int, mode int) (err error) {
 	_, _, e1 := _Syscall(_SYS_FCHMOD, uintptr(fd), uintptr(mode), 0)
@@ -217,7 +198,7 @@ func fcntl(fd int, cmd, arg int) (int, error) {
 	valptr, _, errno := _Syscall(fcntl64Syscall, uintptr(fd), uintptr(cmd), uintptr(arg))
 	var err error
 	if errno != 0 {
-		err = errno
+		err = errnoErr(errno)
 	}
 	return int(valptr), err
 }
@@ -226,26 +207,7 @@ func fcntl(fd int, cmd, arg int) (int, error) {
 
 func _Syscall(trap, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
 func _Syscall6(trap, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
-func _RawSyscall(trap, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
-func _RawSyscall6(trap, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-//goland:noinspection GoSnakeCaseUsage
-const (
-	_SYS_FTRUNCATE    = 77
-	_SYS_MEMFD_CREATE = 319
-	_SYS_MADVISE      = 28
-	_SYS_MMAP         = 9
-	_SYS_MUNMAP       = 11
-	_SYS_MPROTECT     = 10
-	_SYS_MLOCK        = 149
-	_SYS_MUNLOCK      = 150
-	_SYS_MLOCKALL     = 151
-	_SYS_MUNLOCKALL   = 152
-	_SYS_MSYNC        = 26
-	_SYS_CLOSE        = 3
-	_SYS_FCHOWN       = 93
-	_SYS_FSTAT        = 5
-	_SYS_FCHMOD       = 91
-	_SYS_FCNTL        = 72
-)
+// Stat_t, the _SYS_* syscall numbers, and MAP_32BIT live in the per-arch files
+// posix_linux_amd64.go and posix_linux_arm64.go.
