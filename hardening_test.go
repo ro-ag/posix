@@ -5,6 +5,7 @@ package posix_test
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 	"testing"
 
 	"gopkg.in/ro-ag/posix.v1"
@@ -141,4 +142,92 @@ func TestShmOpenErrors(t *testing.T) {
 		_ = posix.Close(fd2)
 		t.Error(`ShmOpen(""): want error, got nil`)
 	}
+}
+
+// protectSink defeats the compiler eliding the reads in TestMprotectEnforced.
+var protectSink byte
+
+// TestMprotectEnforced verifies Mprotect actually changes page permissions: a
+// write to a PROT_READ page faults, a read from a PROT_NONE page faults. It runs
+// on every platform (it previously lived in a _darwin_test.go file and so never
+// ran on Linux), which also exercises the mprotect syscall on linux/arm64.
+func TestMprotectEnforced(t *testing.T) {
+	size := posix.Getpagesize()
+	buf, _, err := posix.Mmap(nil, size, posix.PROT_READ|posix.PROT_WRITE, posix.MAP_ANON|posix.MAP_PRIVATE, 0, 0)
+	if err != nil {
+		t.Fatalf("Mmap: %v", err)
+	}
+	defer func() { _ = posix.Munmap(buf) }()
+
+	buf[0] = 1 // writable now
+
+	if err := posix.Mprotect(buf, posix.PROT_READ); err != nil {
+		t.Fatalf("Mprotect PROT_READ: %v", err)
+	}
+	if !faults(func() { buf[0] = 2 }) {
+		t.Error("write to a PROT_READ mapping did not fault")
+	}
+	protectSink = buf[0] // reads are still allowed
+
+	if err := posix.Mprotect(buf, posix.PROT_NONE); err != nil {
+		t.Fatalf("Mprotect PROT_NONE: %v", err)
+	}
+	if !faults(func() { protectSink = buf[0] }) {
+		t.Error("read from a PROT_NONE mapping did not fault")
+	}
+
+	if err := posix.Mprotect(buf, posix.PROT_READ|posix.PROT_WRITE); err != nil {
+		t.Fatalf("Mprotect restore: %v", err)
+	}
+}
+
+// TestFcntlCloexecRoundTrip drives F_GETFD/F_SETFD to set and clear FD_CLOEXEC.
+// Clearing it is exactly what ShmAnonymous and MemfdCreate rely on so the
+// descriptor survives exec; this also exercises the fcntl syscall on
+// linux/arm64.
+func TestFcntlCloexecRoundTrip(t *testing.T) {
+	fd, err := posix.MemfdCreate("cloexec", posix.MFD_ALLOW_SEALING)
+	if err != nil {
+		t.Fatalf("MemfdCreate: %v", err)
+	}
+	defer func() { _ = posix.Close(fd) }()
+
+	flags, err := posix.Fcntl(fd, posix.F_GETFD, 0)
+	if err != nil {
+		t.Fatalf("F_GETFD: %v", err)
+	}
+	if _, err := posix.Fcntl(fd, posix.F_SETFD, flags|posix.FD_CLOEXEC); err != nil {
+		t.Fatalf("F_SETFD set: %v", err)
+	}
+	got, err := posix.Fcntl(fd, posix.F_GETFD, 0)
+	if err != nil {
+		t.Fatalf("F_GETFD after set: %v", err)
+	}
+	if got&posix.FD_CLOEXEC == 0 {
+		t.Error("FD_CLOEXEC not set after F_SETFD")
+	}
+
+	if _, err := posix.Fcntl(fd, posix.F_SETFD, got&^posix.FD_CLOEXEC); err != nil {
+		t.Fatalf("F_SETFD clear: %v", err)
+	}
+	if got, err = posix.Fcntl(fd, posix.F_GETFD, 0); err != nil {
+		t.Fatalf("F_GETFD after clear: %v", err)
+	}
+	if got&posix.FD_CLOEXEC != 0 {
+		t.Error("FD_CLOEXEC still set after clearing it")
+	}
+}
+
+// faults reports whether fn triggered a memory-protection fault, using
+// debug.SetPanicOnFault to turn the SIGSEGV/SIGBUS into a recoverable panic.
+func faults(fn func()) (faulted bool) {
+	defer debug.SetPanicOnFault(false)
+	debug.SetPanicOnFault(true)
+	defer func() {
+		if recover() != nil {
+			faulted = true
+		}
+	}()
+	fn()
+	return false
 }
