@@ -26,10 +26,9 @@ import "gopkg.in/ro-ag/posix.v1"
 - **No cgo.** The whole package builds with the cgo toolchain disabled (details
   below).
 
-The combination — `shm_open` *and* fixed-address `mmap`, with no cgo — is rare. I
-went looking for another Go package that does all three and couldn't find one;
-if you know of one, I'd like to hear about it. (That's "the one I couldn't find,"
-not "the only one that exists.")
+The combination — `shm_open` *and* fixed-address `mmap`, with no cgo — is rare: I
+couldn't find another Go package that does all three. (If you know one, I'd like
+to hear about it — that's "the one I couldn't find," not "the only one.")
 
 ## No cgo, precisely
 
@@ -77,25 +76,29 @@ The complete, runnable program is in
 between the two processes:
 
 ```go
-type payload struct { // no pointers: the bytes mean the same thing in both processes
+// No pointers, so the bytes mean the same in both processes.
+type payload struct {
 	Magic    uint64
 	Seq      uint64
 	ChildPID int64
 	Reply    [96]byte
 }
 
-// Parent — create, size, and map a named object, then write into it.
-fd, _ := posix.ShmOpen("/demo", posix.O_RDWR|posix.O_CREAT|posix.O_EXCL, posix.S_IRUSR|posix.S_IWUSR)
-posix.Ftruncate(fd, int(unsafe.Sizeof(payload{})))
-buf, _, _ := posix.Mmap(nil, int(unsafe.Sizeof(payload{})), posix.PROT_RDWR, posix.MAP_SHARED, fd, 0)
+size := int(unsafe.Sizeof(payload{}))
+
+// Parent: create, size, and map a named object, then write into it.
+fd, _ := posix.ShmOpen("/demo",
+	posix.O_RDWR|posix.O_CREAT|posix.O_EXCL, posix.S_IRUSR|posix.S_IWUSR)
+posix.Ftruncate(fd, size)
+buf, _, _ := posix.Mmap(nil, size, posix.PROT_RDWR, posix.MAP_SHARED, fd, 0)
 p := (*payload)(unsafe.Pointer(&buf[0]))
 p.Seq = 42
 
-// Child (separate process) — open the same name and share the same bytes.
+// Child, in a separate process: open the same name, share the bytes.
 fd, _ := posix.ShmOpen("/demo", posix.O_RDWR, 0)
 buf, _, _ := posix.Mmap(nil, size, posix.PROT_RDWR, posix.MAP_SHARED, fd, 0)
 p := (*payload)(unsafe.Pointer(&buf[0])) // sees Seq == 42
-p.Seq = 43                               // the parent sees this
+p.Seq = 43                               // and the parent sees it
 ```
 
 Run it:
