@@ -10,6 +10,8 @@ const (
 	EAGAIN     = syscall.EAGAIN
 	ENOENT     = syscall.ENOENT
 	EFAULT     = syscall.EFAULT
+	EPERM      = syscall.EPERM
+	EBUSY      = syscall.EBUSY
 	O_RDWR     = syscall.O_RDWR     // open for reading and writing
 	O_CREAT    = syscall.O_CREAT    // create if nonexistent
 	O_EXCL     = syscall.O_EXCL     // error if already exists

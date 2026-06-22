@@ -23,10 +23,16 @@ func ShmOpen(name string, oflag int, mode uint32) (fd int, err error) {
 	return shmOpen(name, oflag, mode)
 }
 
-// Ftruncate
-// Set the size of the shared memory object.  (A newly
-// created shared memory object has a length of zero.)
+// Ftruncate sets the size of the shared-memory object. (A newly created object
+// has length zero.) When a size seal is set, the matching change is rejected:
+// F_SEAL_SHRINK blocks shrinking and F_SEAL_GROW blocks growing.
+//
+// On macOS a shm object's size can be set only once; a later Ftruncate returns
+// EINVAL, and the size is rounded up to a page.
 func Ftruncate(fd int, length int) error {
+	if err := sealCheckTruncate(fd, length); err != nil {
+		return err
+	}
 	return ftruncate(fd, length)
 }
 
@@ -50,6 +56,9 @@ func Madvise(b []byte, behav int) error {
 func Mmap(address unsafe.Pointer, length int, prot int, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
 	if length <= 0 {
 		return nil, 0, EINVAL
+	}
+	if err := sealCheckMmap(fd, prot, flags); err != nil {
+		return nil, 0, err
 	}
 	return mapper.Mmap(address, uintptr(length), prot, flags, fd, offset)
 }
@@ -124,7 +133,9 @@ func ShmUnlink(path string) (err error) {
 // the file descriptor allocated by shm_open(3) when it
 // is no longer needed.
 func Close(fd int) error {
-	return closeFd(fd)
+	err := closeFd(fd)
+	sealForget(fd)
+	return err
 }
 
 // Fstat
