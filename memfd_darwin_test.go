@@ -82,3 +82,28 @@ func TestMacOSShmFchmodFchownRejected(t *testing.T) {
 		t.Error("Fchown on a macOS shm object: want error, got nil")
 	}
 }
+
+// TestShmAnonymousUsable: ShmAnonymous (the macOS-native anonymous shm helper)
+// returns a descriptor that can be sized, mapped, and read/written.
+func TestShmAnonymousUsable(t *testing.T) {
+	fd, err := posix.ShmAnonymous()
+	if err != nil {
+		t.Fatalf("ShmAnonymous: %v", err)
+	}
+	defer func() { _ = posix.Close(fd) }()
+	pg := posix.Getpagesize()
+	if err := posix.Ftruncate(fd, pg); err != nil {
+		t.Fatalf("Ftruncate: %v", err)
+	}
+	buf, _, err := posix.Mmap(nil, pg, posix.PROT_READ|posix.PROT_WRITE, posix.MAP_SHARED, fd, 0)
+	if err != nil {
+		t.Fatalf("Mmap: %v", err)
+	}
+	copy(buf, "anon works")
+	if got := string(buf[:10]); got != "anon works" {
+		t.Errorf("read back %q, want %q", got, "anon works")
+	}
+	if err := posix.Munmap(buf); err != nil {
+		t.Errorf("Munmap: %v", err)
+	}
+}
