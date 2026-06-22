@@ -226,8 +226,6 @@ func fcntl(fd int, cmd, arg int) (int, error) {
 
 func _Syscall(trap, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
 func _Syscall6(trap, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
-func _RawSyscall(trap, a1, a2, a3 uintptr) (r1, r2 uintptr, err syscall.Errno)
-func _RawSyscall6(trap, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err syscall.Errno)
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 //goland:noinspection GoSnakeCaseUsage

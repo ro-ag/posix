@@ -140,7 +140,7 @@ func remCloseOnExec(fd int) (err error) {
 
 	arg &^= FD_CLOEXEC // Clear the close-on-exec flag.
 
-	if arg, err = Fcntl(fd, F_SETFD, arg); err != nil {
+	if _, err = Fcntl(fd, F_SETFD, arg); err != nil {
 		_ = Close(fd)
 		return
 	}

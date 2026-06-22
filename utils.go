@@ -8,31 +8,28 @@ import (
 )
 
 func (m ModeT) valid(t ModeT) bool {
-	if m&t != 0 {
-		return true
-	}
-	return false
+	return m&t != 0
 }
 
-//S_ISBLK  block special
+// S_ISBLK  block special
 func (m ModeT) S_ISBLK() bool { return m&S_IFMT == S_IFBLK }
 
-//S_ISCHR char special
+// S_ISCHR char special
 func (m ModeT) S_ISCHR() bool { return m&S_IFMT == S_IFCHR }
 
-//S_ISDIR directory
+// S_ISDIR directory
 func (m ModeT) S_ISDIR() bool { return m&S_IFMT == S_IFDIR }
 
-//S_ISFIFO fifo or socket
+// S_ISFIFO fifo or socket
 func (m ModeT) S_ISFIFO() bool { return m&S_IFMT == S_IFIFO }
 
-//S_ISREG regular file
+// S_ISREG regular file
 func (m ModeT) S_ISREG() bool { return m&S_IFMT == S_IFREG }
 
-//S_ISLNK symbolic link
+// S_ISLNK symbolic link
 func (m ModeT) S_ISLNK() bool { return m&S_IFMT == S_IFLNK }
 
-//S_ISSOCK socket
+// S_ISSOCK socket
 func (m ModeT) S_ISSOCK() bool { return m&S_IFMT == S_IFSOCK }
 
 func (x DevT) major() DevT {

@@ -113,6 +113,7 @@ const (
 )
 
 // File Fcntl
+//
 //goland:noinspection GoSnakeCaseUsage
 const (
 	F_GETFD    = syscall.F_GETFD
