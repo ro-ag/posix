@@ -1,0 +1,23 @@
+version: 2
+updates:
+  # All Go module updates collapse into ONE grouped PR (any update type), so a
+  # refresh can't open a PR per dependency. (The package currently has zero
+  # third-party deps; this keeps it tidy if any are ever added.)
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      gomod:
+        patterns: ["*"]
+
+  # All GitHub Actions updates collapse into ONE grouped PR.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
