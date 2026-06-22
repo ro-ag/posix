@@ -110,15 +110,15 @@ round-trip OK
 
 ## Supported platforms
 
-| Target         | Status                                                  |
-| -------------- | ------------------------------------------------------- |
-| `linux/amd64`  | ✅ built & tested in CI                                  |
-| `darwin/arm64` | ✅ built & tested in CI                                  |
-| `darwin/amd64` | ✅ builds (CI's macOS runner is arm64)                   |
-| `linux/arm64`  | ❌ not yet — uses amd64-only syscall asm and `MAP_32BIT` |
+| Target         | Status                                |
+| -------------- | ------------------------------------- |
+| `linux/amd64`  | ✅ built & tested in CI                |
+| `linux/arm64`  | ✅ built & tested in CI                |
+| `darwin/arm64` | ✅ built & tested in CI                |
+| `darwin/amd64` | ✅ builds (CI's macOS runner is arm64) |
 
-Adding `linux/arm64` (an `asm_linux_arm64.s` plus arch-gated constants) is a
-welcome contribution.
+CI runs the full suite — including the cross-process round trip and a runtime
+`Stat_t` ABI check — on `ubuntu-latest`, `ubuntu-24.04-arm`, and `macos-latest`.
 
 ## API
 
