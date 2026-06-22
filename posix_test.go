@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"gopkg.in/ro-ag/posix.v1"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -169,7 +168,7 @@ func TestFchown(t *testing.T) {
 
 func TestFcntl(t *testing.T) {
 	t.Parallel()
-	file, err := ioutil.TempFile("", "TestFcntlInt")
+	file, err := os.CreateTemp("", "TestFcntlInt")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -322,6 +321,9 @@ func displayInfo(fd int, t *testing.T) {
 }
 
 func TestStress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test spawns thousands of child processes; skipped under -short")
+	}
 	t.Log("build external test")
 	FileName := "./test/shm"
 	cmd := exec.Command("go", "build", "-o", FileName, "./test")
@@ -483,7 +485,6 @@ func TestStress(t *testing.T) {
 				}
 			}
 			t.Log("test done")
-			return
 		})
 
 		if err != nil {
