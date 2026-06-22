@@ -9,7 +9,8 @@ reproduced below.
 
 Derived portions include:
 
-  * asm_linux_amd64.s         Linux amd64 syscall trampolines (_Syscall, _Syscall6).
+  * asm_linux_amd64.s,
+    asm_linux_arm64.s         Linux amd64/arm64 syscall trampolines (_Syscall, _Syscall6).
   * asm_darwin.s              macOS libc dynamic-import trampolines.
   * posix_darwin.go,
     shm_open_darwin.go        macOS libc bindings via //go:cgo_import_dynamic
