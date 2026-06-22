@@ -132,20 +132,39 @@ CI runs the full suite — including the cross-process round trip and a runtime
 
 Full reference on **[pkg.go.dev](https://pkg.go.dev/gopkg.in/ro-ag/posix.v1)**.
 
-### Wrapper, with a thin macOS shim
+### macOS: a wrapper with a thin emulation shim
 
-This package is a **wrapper** — direct bindings to the native syscalls (Linux)
-or libc (macOS), not a reimplementation. Two things macOS lacks are **emulated**,
-and the difference is stated honestly:
+This package is a **wrapper** — direct bindings to the native syscalls (Linux) or
+libc (macOS), not a reimplementation. macOS lacks two things Linux has, so they
+are **emulated**, and the difference is stated honestly.
 
-- `MemfdCreate` — macOS has no `memfd_create`, so it's emulated with `shm_open` +
-  an immediate `shm_unlink`. The object's size rounds up to a page and can be set
-  only once.
-- **Sealing** (`AddSeals`) — kernel-enforced on Linux; macOS has no shm sealing,
-  so it's **advisory** (honored by this package's own `Mmap`/`Ftruncate`, not a
-  cross-process security boundary). For a hard read-only guarantee to a peer, use
-  Linux — or open the object `O_RDONLY`, which makes the kernel reject a
-  `PROT_WRITE` mapping on both platforms.
+**Anonymous memory (`MemfdCreate` / `ShmAnonymous`).** Linux has `memfd_create`;
+macOS does not. macOS `shm_open` returns a *named*, Mach-backed memory object, so
+the emulation creates one under a random name and `shm_unlink`s it immediately,
+keeping the fd — the standard "shm_open + unlink" technique. How close that gets
+to a real memfd:
+
+| memfd property | macOS emulation |
+| --- | --- |
+| anonymous (no name) | ✅ after unlink (µs window, unguessable name) |
+| in-RAM, volatile | ✅ (Mach-backed) |
+| auto-freed when last fd closes | ✅ |
+| inheritable across exec | ✅ (`FD_CLOEXEC` cleared) |
+| growable | ❌ size is set once |
+| exact size | ❌ rounds up to a page |
+| `MAP_PRIVATE` | ❌ shared mappings only |
+| kernel sealing | ⚠️ advisory only (below) |
+
+**Sealing (`AddSeals`).** Kernel-enforced on Linux (`F_SEAL_*` via `fcntl`). macOS
+has no shm sealing, so it is **advisory**: this package's own `Mmap` and
+`Ftruncate` honor the seals in-process, but it is **not** a cross-process security
+boundary — another process or a raw syscall can ignore them. For a hard read-only
+guarantee to a peer, use Linux, or open the object `O_RDONLY` (the kernel rejects
+a `PROT_WRITE` mapping of a read-only fd on both platforms).
+
+Also macOS-specific: `Fchmod`/`Fchown` return `EINVAL` on shm (set the mode via
+`ShmOpen` at creation), shm names are capped at 31 characters, and file locking is
+advisory only (no mandatory locking). Every one of these is covered by tests.
 
 > If you don't need a fixed mmap address or `shm_open`, prefer
 > [`golang.org/x/sys`](https://pkg.go.dev/golang.org/x/sys/unix) — this package's
