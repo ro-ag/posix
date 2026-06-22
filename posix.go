@@ -9,10 +9,16 @@ import (
 	"unsafe"
 )
 
-// ShmOpen
-// Create and open a new object, or open an existing object.
-// This is analogous to open.  The call returns a file
-// descriptor for use by the other interfaces listed below.
+// ShmOpen creates and opens a new shared-memory object, or opens an existing
+// one. It is analogous to open(2) and returns a file descriptor for use by the
+// other calls here.
+//
+// When creating (O_CREAT), mode sets the object's permission bits, and those
+// bits are the access control: another process may ShmOpen the same name only
+// if they allow its uid/gid (0600 keeps it private to the owner, 0660 shares it
+// with a group, and so on). On macOS those permissions are fixed at creation —
+// Fchmod and Fchown do not work on shared memory there — so set mode correctly
+// up front; on Linux it can be changed afterward.
 func ShmOpen(name string, oflag int, mode uint32) (fd int, err error) {
 	return shmOpen(name, oflag, mode)
 }
@@ -130,14 +136,16 @@ func Fstat(fd int, stat *Stat_t) error {
 	return fstat(fd, stat)
 }
 
-// Fchown
-// To change the ownership of a shared memory object.
+// Fchown changes the ownership of a shared-memory object. It works on Linux but
+// returns EINVAL on macOS, where shm ownership is fixed at creation (the object
+// is owned by the process that created it).
 func Fchown(fd int, uid int, gid int) error {
 	return fchown(fd, uid, gid)
 }
 
-// Fchmod
-// To change the permissions of a shared memory object.
+// Fchmod changes the permission bits of a shared-memory object. It works on
+// Linux but returns EINVAL on macOS, where shm permissions are fixed at
+// creation; pass the desired mode to ShmOpen instead.
 func Fchmod(fd int, mode int) error {
 	return fchmod(fd, mode)
 }
@@ -156,15 +164,16 @@ func Getpagesize() int {
 	return syscall.Getpagesize()
 }
 
-// MemfdCreate creates an anonymous file and returns a file
-// descriptor that refers to it.  The file behaves like a regular
-// file, and so can be modified, truncated, memory-mapped, and so
-// on.  However, unlike a regular file, it lives in RAM and has a
-// volatile backing storage.  Once all references to the file are
-// dropped, it is automatically released.
+// MemfdCreate creates an anonymous, in-memory file and returns a descriptor for
+// it. The descriptor can be Ftruncate'd, Mmap'd, and inherited by a child
+// process; the object is released once all descriptors are closed.
 //
-// NOTE: on macOS this is emulated with shm_open (Linux has memfd_create
-// natively); the emulation is intended for testing.
+// On Linux this is the native memfd_create syscall. macOS has no memfd_create,
+// so it is emulated: a uniquely named shm_open object is created and its name is
+// unlinked immediately, leaving an anonymous descriptor. The emulation covers
+// the create/size/map/share path, but differs from a Linux memfd in two ways —
+// the object size is rounded up to a page, and kernel sealing (MFD_ALLOW_SEALING)
+// has no effect. For macOS-native code, ShmAnonymous is the direct equivalent.
 func MemfdCreate(name string, flags int) (fd int, err error) {
 	return memfdCreate(name, flags)
 }

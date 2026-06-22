@@ -5,6 +5,7 @@ package posix_test
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"runtime/debug"
 	"testing"
 
@@ -230,4 +231,44 @@ func faults(fn func()) (faulted bool) {
 	}()
 	fn()
 	return false
+}
+
+// TestShmPermissions pins down the access-control model: the mode passed to
+// ShmOpen sets the object's permission bits (which decide whether another
+// process may open it by name), and Fstat reads them back. Changing them
+// afterward works on Linux but is rejected on macOS shared memory — so the
+// create-time mode is the portable way to control access.
+func TestShmPermissions(t *testing.T) {
+	name := fmt.Sprintf("/posix-perm-%d", os.Getpid())
+	_ = posix.ShmUnlink(name)
+	fd, err := posix.ShmOpen(name, posix.O_RDWR|posix.O_CREAT|posix.O_EXCL, 0o600)
+	if err != nil {
+		t.Fatalf("ShmOpen: %v", err)
+	}
+	defer func() { _ = posix.ShmUnlink(name); _ = posix.Close(fd) }()
+
+	var st posix.Stat_t
+	if err := posix.Fstat(fd, &st); err != nil {
+		t.Fatalf("Fstat: %v", err)
+	}
+	if st.Mode&0o777 != 0o600 {
+		t.Errorf("created mode = %#o, want 0600 — the mode arg must set shm permissions", st.Mode&0o777)
+	}
+
+	err = posix.Fchmod(fd, 0o644)
+	if runtime.GOOS == "darwin" {
+		if err == nil {
+			t.Error("Fchmod on macOS shm unexpectedly succeeded (documented as unsupported)")
+		}
+	} else {
+		if err != nil {
+			t.Fatalf("Fchmod on linux: %v", err)
+		}
+		if err := posix.Fstat(fd, &st); err != nil {
+			t.Fatalf("Fstat after Fchmod: %v", err)
+		}
+		if st.Mode&0o777 != 0o644 {
+			t.Errorf("after Fchmod(0644), mode = %#o, want 0644", st.Mode&0o777)
+		}
+	}
 }
