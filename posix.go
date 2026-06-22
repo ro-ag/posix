@@ -33,11 +33,18 @@ func Madvise(b []byte, behav int) error {
 	return madvise(b, behav)
 }
 
-// Mmap
-// Map the shared memory object into the virtual address
-// space of the calling process.
-// MmapAt has the same parameters as the C mmap implementation where the address is exposed.
+// Mmap maps length bytes of the object referred to by fd (or anonymous memory)
+// into the calling process's address space, starting at the given offset.
+//
+// Unlike syscall.Mmap and golang.org/x/sys, the destination address is exposed:
+// pass it as a hint, or add MAP_FIXED to place the mapping at exactly that
+// address. Mmap returns the mapped slice and the address the kernel chose.
+//
+// The caller must release the mapping with Munmap; it is not garbage-collected.
 func Mmap(address unsafe.Pointer, length int, prot int, flags int, fd int, offset int64) (data []byte, add uintptr, err error) {
+	if length <= 0 {
+		return nil, 0, EINVAL
+	}
 	return mapper.Mmap(address, uintptr(length), prot, flags, fd, offset)
 }
 
@@ -156,9 +163,8 @@ func Getpagesize() int {
 // volatile backing storage.  Once all references to the file are
 // dropped, it is automatically released.
 //
-// NOTE: MacOSx is an Emulation of the original function in Linux
-//
-//	is made for testing only
+// NOTE: on macOS this is emulated with shm_open (Linux has memfd_create
+// natively); the emulation is intended for testing.
 func MemfdCreate(name string, flags int) (fd int, err error) {
 	return memfdCreate(name, flags)
 }

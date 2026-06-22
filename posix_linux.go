@@ -217,7 +217,7 @@ func fcntl(fd int, cmd, arg int) (int, error) {
 	valptr, _, errno := _Syscall(fcntl64Syscall, uintptr(fd), uintptr(cmd), uintptr(arg))
 	var err error
 	if errno != 0 {
-		err = errno
+		err = errnoErr(errno)
 	}
 	return int(valptr), err
 }
