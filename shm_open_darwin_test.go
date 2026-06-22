@@ -3,7 +3,6 @@ package posix_test
 import (
 	"fmt"
 	"gopkg.in/ro-ag/posix.v1"
-	"log"
 	"runtime/debug"
 	"syscall"
 	"testing"
@@ -30,7 +29,9 @@ func TestShmAnonymous(t *testing.T) {
 			}
 			if gotFd == -1 {
 				t.Errorf("ShmAnonymous() got %v", gotFd)
+				return
 			}
+			_ = posix.Close(gotFd)
 		})
 	}
 }
@@ -40,15 +41,12 @@ func TestMemfdCreateParallel(t *testing.T) {
 		name := fmt.Sprintf("name-%.3d", i)
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			fd, err := posix.MemfdCreate("name"+
-				""+
-				"", posix.MFD_ALLOW_SEALING)
+			fd, err := posix.MemfdCreate("name", posix.MFD_ALLOW_SEALING)
 			if err != nil {
 				t.Errorf("MemfdCreate() error = %v %s", err, posix.ErrnoName(err.(syscall.Errno)))
 				return
-			} else {
-				log.Println("Got ", fd)
 			}
+			_ = posix.Close(fd)
 		})
 	}
 
@@ -74,8 +72,9 @@ func TestMemfdCreate(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MemfdCreate() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			} else {
-				log.Println("Got ", fd)
+			}
+			if err == nil {
+				_ = posix.Close(fd)
 			}
 		})
 	}
