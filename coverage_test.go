@@ -158,24 +158,104 @@ func TestMlockUnlock(t *testing.T) {
 	}
 }
 
-// TestModeTHelpers: Fstat a regular file and check the Stat_t mode classifiers.
-func TestModeTHelpers(t *testing.T) {
+// TestModeClassifiers exercises every ModeT.S_IS* classifier by Fstat-ing real
+// objects of each kind: a regular file, a directory, a character device, and a
+// pipe (FIFO). The regular-file case also confirms the other classifiers are
+// false, so all seven methods are evaluated.
+func TestModeClassifiers(t *testing.T) {
+	var st posix.Stat_t
+	fstat := func(label string, fd uintptr) {
+		t.Helper()
+		if err := posix.Fstat(int(fd), &st); err != nil {
+			t.Fatalf("Fstat(%s): %v", label, err)
+		}
+	}
+
 	f, err := os.CreateTemp("", "posix-mode")
 	if err != nil {
 		t.Fatalf("CreateTemp: %v", err)
 	}
 	defer func() { _ = os.Remove(f.Name()); _ = f.Close() }()
+	fstat("regular file", f.Fd())
+	if !st.Mode.S_ISREG() {
+		t.Errorf("regular file: S_ISREG() = false (mode %#o)", st.Mode)
+	}
+	for _, c := range []struct {
+		name string
+		got  bool
+	}{
+		{"S_ISDIR", st.Mode.S_ISDIR()}, {"S_ISCHR", st.Mode.S_ISCHR()},
+		{"S_ISFIFO", st.Mode.S_ISFIFO()}, {"S_ISBLK", st.Mode.S_ISBLK()},
+		{"S_ISSOCK", st.Mode.S_ISSOCK()}, {"S_ISLNK", st.Mode.S_ISLNK()},
+	} {
+		if c.got {
+			t.Errorf("regular file: %s() = true, want false", c.name)
+		}
+	}
 
+	d, err := os.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("Open(dir): %v", err)
+	}
+	defer func() { _ = d.Close() }()
+	fstat("directory", d.Fd())
+	if !st.Mode.S_ISDIR() {
+		t.Errorf("directory: S_ISDIR() = false (mode %#o)", st.Mode)
+	}
+
+	cdev, err := os.Open("/dev/null")
+	if err != nil {
+		t.Fatalf("Open(/dev/null): %v", err)
+	}
+	defer func() { _ = cdev.Close() }()
+	fstat("/dev/null", cdev.Fd())
+	if !st.Mode.S_ISCHR() {
+		t.Errorf("/dev/null: S_ISCHR() = false (mode %#o)", st.Mode)
+	}
+
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("Pipe: %v", err)
+	}
+	defer func() { _ = pr.Close(); _ = pw.Close() }()
+	fstat("pipe", pr.Fd())
+	if !st.Mode.S_ISFIFO() {
+		t.Errorf("pipe: S_ISFIFO() = false (mode %#o)", st.Mode)
+	}
+}
+
+// TestFilePermStr pins the ls-style permission formatter, including the
+// set-user-ID rendering under FP_SPECIAL.
+func TestFilePermStr(t *testing.T) {
+	for _, c := range []struct {
+		perm  posix.ModeT
+		flags int
+		want  string
+	}{
+		{0o644, 0, "[0644] rw-r--r--"},
+		{0o755, 0, "[0755] rwxr-xr-x"},
+		{0o600, 0, "[0600] rw-------"},
+		{0o4755, posix.FP_SPECIAL, "[4755] rwsr-xr-x"},
+	} {
+		if got := posix.FilePermStr(c.perm, c.flags); got != c.want {
+			t.Errorf("FilePermStr(%#o, %d) = %q, want %q", c.perm, c.flags, got, c.want)
+		}
+	}
+}
+
+// TestDisplayStatInfo exercises Stat_t.DisplayStatInfo (and, through it, the
+// DevT major/minor helpers and FilePermStr) — it must run without panicking.
+func TestDisplayStatInfo(t *testing.T) {
+	f, err := os.CreateTemp("", "posix-display")
+	if err != nil {
+		t.Fatalf("CreateTemp: %v", err)
+	}
+	defer func() { _ = os.Remove(f.Name()); _ = f.Close() }()
 	var st posix.Stat_t
 	if err := posix.Fstat(int(f.Fd()), &st); err != nil {
 		t.Fatalf("Fstat: %v", err)
 	}
-	if !st.Mode.S_ISREG() {
-		t.Errorf("S_ISREG() = false for a regular file (mode %#o)", st.Mode)
-	}
-	if st.Mode.S_ISDIR() {
-		t.Error("S_ISDIR() = true for a regular file")
-	}
+	st.DisplayStatInfo()
 }
 
 // TestErrnoHelpers: the errno name/description table resolves known codes.
@@ -188,5 +268,8 @@ func TestErrnoHelpers(t *testing.T) {
 	}
 	if posix.ErrnoString(posix.EINVAL) == "" {
 		t.Error("ErrnoString(EINVAL) is empty")
+	}
+	if posix.ErrnoHelp(posix.EINVAL) == "" {
+		t.Error("ErrnoHelp(EINVAL) is empty")
 	}
 }
